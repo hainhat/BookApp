@@ -1,0 +1,54 @@
+<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">Book Sale</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="collapsibleNavbar">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link active" href="/">Trang chủ</a>
+                </li>
+<!--                {%for a in authors%}-->
+<!--                <li class="nav-item">-->
+<!--                    <a class="nav-link" href="?author_id={{a.id}}">{{a.name}}</a>-->
+<!--                </li>-->
+<!--                {%endfor%}-->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        Tác giả
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        {% for author in authors %}
+                        <li><a class="dropdown-item" href="?author_id={{ author.id }}">{{ author.name }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+                 <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
+                       data-bs-toggle="dropdown" aria-expanded="false">
+                        Thể loại
+                    </a>
+                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        {%for c in categories%}
+                        <li><a class="dropdown-item" href="?category_id={{c.id}}">{{c.name}}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+<!--                {%for c in categories%}-->
+<!--                <li class="nav-item">-->
+<!--                    <a class="nav-link" href="?category_id={{c.id}}">{{c.name}}</a>-->
+<!--                </li>-->
+<!--                {%endfor%}-->
+                <li class="nav-item">
+                    <a class="nav-link text-warning" href="/login">&#128123; Đăng nhập </a>
+                </li>
+            </ul>
+            <form class="d-flex">
+                <input class="form-control me-2" name="q" type="text" placeholder="Nhập từ khóa...">
+                <button class="btn btn-primary" type="submit">Tìm</button>
+            </form>
+        </div>
+    </div>
+</nav>

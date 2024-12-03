@@ -1,0 +1,66 @@
+[
+  {
+    "id": 1,
+    "name": "Doraemon 1",
+    "price": 30000,
+    "image": "https://res.cloudinary.com/dcncfkvwv/image/upload/v1733224370/12_0cb5f1a2e9624a1f9490d8acc4caebaf_389a725001ed45ff873ab5a5ddbd79e7_72faca89566e4933a24302a36ba8c7d0_master_oqsanf.jpg",
+    "category_id": 1,
+    "author_id" : 3
+  },
+  {
+    "id": 2,
+    "name": "Doraemon 2",
+    "price": 30000,
+    "image": "https://res.cloudinary.com/dcncfkvwv/image/upload/v1733224370/12_0cb5f1a2e9624a1f9490d8acc4caebaf_389a725001ed45ff873ab5a5ddbd79e7_72faca89566e4933a24302a36ba8c7d0_master_oqsanf.jpg",
+    "category_id": 1,
+    "author_id" : 1
+  },
+  {
+    "id": 3,
+    "name": "Doraemon 3",
+    "price": 30000,
+    "image": "https://res.cloudinary.com/dcncfkvwv/image/upload/v1733224370/12_0cb5f1a2e9624a1f9490d8acc4caebaf_389a725001ed45ff873ab5a5ddbd79e7_72faca89566e4933a24302a36ba8c7d0_master_oqsanf.jpg",
+    "category_id": 1,
+    "author_id" : 2
+  },
+  {
+    "id": 4,
+    "name": "Doraemon 4",
+    "price": 30000,
+    "image": "https://res.cloudinary.com/dcncfkvwv/image/upload/v1733224370/12_0cb5f1a2e9624a1f9490d8acc4caebaf_389a725001ed45ff873ab5a5ddbd79e7_72faca89566e4933a24302a36ba8c7d0_master_oqsanf.jpg",
+    "category_id": 2,
+    "author_id" : 1
+  },
+  {
+    "id": 5,
+    "name": "Doraemon 5",
+    "price": 30000,
+    "image": "https://res.cloudinary.com/dcncfkvwv/image/upload/v1733224370/12_0cb5f1a2e9624a1f9490d8acc4caebaf_389a725001ed45ff873ab5a5ddbd79e7_72faca89566e4933a24302a36ba8c7d0_master_oqsanf.jpg",
+    "category_id": 1,
+    "author_id" : 2
+  },
+  {
+    "id": 6,
+    "name": "Doraemon 6",
+    "price": 30000,
+    "image": "https://res.cloudinary.com/dcncfkvwv/image/upload/v1733224370/12_0cb5f1a2e9624a1f9490d8acc4caebaf_389a725001ed45ff873ab5a5ddbd79e7_72faca89566e4933a24302a36ba8c7d0_master_oqsanf.jpg",
+    "category_id": 3,
+    "author_id" : 1
+  },
+  {
+    "id": 7,
+    "name": "Doraemon 7",
+    "price": 30000,
+    "image": "https://res.cloudinary.com/dcncfkvwv/image/upload/v1733224370/12_0cb5f1a2e9624a1f9490d8acc4caebaf_389a725001ed45ff873ab5a5ddbd79e7_72faca89566e4933a24302a36ba8c7d0_master_oqsanf.jpg",
+    "category_id": 1,
+    "author_id" : 3
+  },
+  {
+    "id": 8,
+    "name": "Doraemon 8",
+    "price": 30000,
+    "image": "https://res.cloudinary.com/dcncfkvwv/image/upload/v1733224370/12_0cb5f1a2e9624a1f9490d8acc4caebaf_389a725001ed45ff873ab5a5ddbd79e7_72faca89566e4933a24302a36ba8c7d0_master_oqsanf.jpg",
+    "category_id": 2,
+    "author_id" : 1
+  }
+]

@@ -1,0 +1,16 @@
+{%extends "layout/base.html"%}
+{%block title%}Chi tiết sản phẩm{%endblock%}
+{%block content%}
+<div class ="row">
+    <div class="col-md-5 col-12">
+        <img src="{{book.image}}" class="img-fluid"/>
+    </div>
+    <div class ="col-md-7 col-12">
+        <h1 class="text-danger">{{book.name}}</h1>
+        <h3 class="text-danger">{{book.price}}</h3>
+        <p> Tác giả : {{book.author.name}}</p>
+        <p> Thể loại : {{book.category.name}}</p>
+    </div>
+</div>
+{{book}}
+{%endblock%}
