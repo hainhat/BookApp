@@ -1,6 +1,7 @@
 from sqlalchemy import Column, String, Integer, Float, ForeignKey, Boolean
 from bookapp import db, app
 from sqlalchemy.orm import relationship
+from flask_login import UserMixin
 
 
 class Category(db.Model):
@@ -28,14 +29,14 @@ class Book(db.Model):
     image = Column(String(300),
                    default='https://res.cloudinary.com/dcncfkvwv/image/upload/v1733224370/12_0cb5f1a2e9624a1f9490d8acc4caebaf_389a725001ed45ff873ab5a5ddbd79e7_72faca89566e4933a24302a36ba8c7d0_master_oqsanf.jpg')
     active = Column(Boolean, default=True)
-    category_id = Column(Integer, ForeignKey("category.id"), nullable=True)
-    author_id = Column(Integer, ForeignKey("author.id"), nullable=True)
+    category_id = Column(Integer, ForeignKey(Category.id), nullable=True)
+    author_id = Column(Integer, ForeignKey(Author.id), nullable=True)
 
     def __str__(self):
         return self.name
 
 
-class User(db.Model):
+class User(db.Model, UserMixin):
     id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50))
     username = Column(String(50), unique=True, nullable=False)
@@ -50,7 +51,7 @@ class User(db.Model):
 
 if __name__ == "__main__":
     with app.app_context():
-        # db.create_all()
+        db.create_all()
         c1 = Category(name="Truyện tranh")
         c2 = Category(name="Tiểu thuyết")
         c3 = Category(name="Truyện kinh dị")

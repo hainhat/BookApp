@@ -1,0 +1,32 @@
+{%extends "layout/base.html"%}
+{%block title%}Đăng ký{%endblock%}
+{%block content%}
+<form action="\register" method="post" enctype="multipart/form-data">
+    <h1 class="text-center text-info mt-1">Register</h1>
+    <div class="form-floating mb-3 mt-3">
+        <input type="text" class="form-control" id="name" placeholder="Enter name" name="name">
+        <label for="name">Full name</label>
+    </div>
+    <div class="form-floating mb-3 mt-3">
+        <input type="text" class="form-control" id="username" placeholder="Enter username" name="username"
+               pattern="[a-zA-Z0-9]*" required>
+        <label for="username">Username</label>
+    </div>
+    <div class="form-floating mt-3 mb-3">
+        <input type="password" class="form-control" id="password" placeholder="Enter password" name="password" required>
+        <label for="password">Password</label>
+    </div>
+    <div class="form-floating mt-3 mb-3">
+        <input type="password" class="form-control" id="confirm" placeholder="Confirm password" name="confirm" required>
+        <label for="confirm">Confirm password</label>
+    </div>
+    <div class="form-floating mt-3 mb-3">
+        <input type="file" class="form-control" id="avatar" name="avatar">
+        <label for="avatar">Avatar</label>
+    </div>
+    {%if err_msg%}
+    <div class="alert alert-danger">{{err_msg}}</div>
+    {%endif%}
+    <button class="btn btn-success" type="submit">Register</button>
+</form>
+{%endblock%}
