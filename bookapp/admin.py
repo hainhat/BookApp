@@ -3,7 +3,7 @@ from flask_admin.contrib.sqla import ModelView
 from models import Book, Author, Category
 from bookapp import app, db
 
-admin = Admin(app=app, name="E-Commerce Administrator", template_mode="bootstrap4")
+admin = Admin(app=app, name="Book Store Administrator", template_mode="bootstrap4")
 
 
 class MyCategoryView(ModelView):

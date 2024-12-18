@@ -1,0 +1,126 @@
+{% extends 'layout/base.html' %}
+
+{% block content %}
+<div class="container py-4">
+    <h1 class="text-center mb-4">Nhập sách vào kho</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                    {% if category == 'success' %}
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                    {% else %}
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    {% endif %}
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {% if current_user.user_role == UserRoleEnum.MANAGER %}
+        <!-- Hiển thị quy định nhập sách -->
+        <div class="row mb-4">
+            <div class="col-md-12">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body">
+                        <h5 class="card-title mb-3">Quy định nhập sách:</h5>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-2">
+                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                    Số lượng nhập tối thiểu: <strong>{{ rules.min_import_quantity }}</strong>
+                                </p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-2">
+                                    <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                    Số lượng tồn tối thiểu trước khi nhập: <strong>{{ rules.min_stock_before_import }}</strong>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Danh sách sách -->
+        <div class="card shadow-sm border-0">
+            <div class="card-body">
+                <h5 class="card-title mb-4">Danh sách sách trong kho</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Tên sách</th>
+                                <th scope="col">Thể loại</th>
+                                <th scope="col" class="text-center">Tồn kho</th>
+                                <th scope="col" class="text-end">Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for book, inventory in books %}
+                            <tr>
+                                <td>{{ book.name }}</td>
+                                <td>{{ book.category.name }}</td>
+                                <td class="text-center">
+                                    <span class="badge bg-{{ 'danger' if not inventory or inventory.quantity < rules.min_stock_before_import else 'success' }}">
+                                        {{ inventory.quantity if inventory else 0 }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    <form method="post" action="{{ url_for('import_book', book_id=book.id) }}" class="d-inline">
+                                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#importModal{{ book.id }}">
+                                            <i class="bi bi-plus-circle me-1"></i>Nhập sách
+                                        </button>
+                                    </form>
+
+                                    <!-- Modal cho từng sách -->
+                                    <div class="modal fade" id="importModal{{ book.id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <form method="post" action="{{ url_for('import_book', book_id=book.id) }}">
+                                                    <div class="modal-header">
+                                                        <h5 class="modal-title">Nhập sách: {{ book.name }}</h5>
+                                                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                    </div>
+                                                    <div class="modal-body">
+                                                        <div class="mb-3">
+                                                            <label for="quantity" class="form-label">Số lượng</label>
+                                                            <input type="number" class="form-control" id="quantity" name="quantity"
+                                                                   min="{{ rules.min_import_quantity }}" required>
+                                                        </div>
+                                                        <div class="mb-3">
+                                                            <label for="import_price" class="form-label">Đơn giá</label>
+                                                            <div class="input-group">
+                                                                <input type="number" class="form-control" id="import_price" name="import_price"
+                                                                       min="1000" step="1000" required>
+                                                                <span class="input-group-text">VNĐ</span>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                                                        <button type="submit" class="btn btn-primary">Nhập sách</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-danger" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            Bạn không có quyền truy cập trang này!
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

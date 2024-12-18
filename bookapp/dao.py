@@ -1,5 +1,8 @@
 import json
 import hashlib
+
+from sqlalchemy import extract
+
 from models import *
 from bookapp import app, db
 
@@ -38,8 +41,15 @@ def count_book():
 
 
 def auth_user(username, password):
-    password = str(hashlib.md5(password.strip().encode('utf-8')).hexdigest())
-    return User.query.filter(User.username.__eq__(username.strip()), User.password.__eq__(password)).first()
+    if username and password:
+        password = str(hashlib.md5(password.strip().encode('utf-8')).hexdigest())
+        user = User.query.filter(
+            User.username == username.strip(),
+            User.password == password,
+            User.active == True
+        ).first()
+        return user
+    return None
 
 
 def get_user_by_id(id):
@@ -52,6 +62,73 @@ def add_user(name, username, password, avatar):
     db.session.add(u)
     db.session.commit()
     return u
+
+
+# Thêm sách vào kho
+def load_books_for_import():
+    # Lấy sách và thông tin tồn kho
+    return db.session.query(Book, BookInventory).outerjoin(BookInventory).all()
+
+
+def get_store_rules():
+    return StoreRules.query.first()
+
+
+def create_import(manager_id, book_id, quantity, import_price):
+    inventory = BookInventory.query.filter_by(book_id=book_id).first()
+    if inventory:
+        inventory.quantity += quantity
+        inventory.imported_at = datetime.now()
+    else:
+        inventory = BookInventory(book_id=book_id, quantity=quantity)
+        db.session.add(inventory)
+
+    db.session.commit()
+    return inventory
+
+
+
+def get_book_inventory(book_id):
+    return BookInventory.query.filter_by(book_id=book_id).first()
+
+
+def update_inventory(book_id, quantity_sold):
+    inventory = get_book_inventory(book_id)
+    if inventory:
+        if inventory.quantity >= quantity_sold:
+            inventory.quantity -= quantity_sold
+            db.session.commit()
+            return True
+    return False
+
+
+def calculate_total_amount(receipt_id):
+    receipt = Receipt.query.get(receipt_id)
+    total = sum(detail.quantity * detail.unit_price for detail in receipt.receipt_details)
+    receipt.total_amount = total
+    db.session.commit()
+
+
+def create_receipt(staff_id, payment_method):
+    receipt = Receipt(
+        staff_id=staff_id,
+        payment_method=payment_method
+    )
+    db.session.add(receipt)
+    db.session.commit()
+    return receipt
+
+
+def add_receipt_detail(receipt_id, book_id, quantity, unit_price):
+    detail = ReceiptDetail(
+        receipt_id=receipt_id,
+        book_id=book_id,
+        quantity=quantity,
+        unit_price=unit_price
+    )
+    db.session.add(detail)
+    db.session.commit()
+    return detail
 
 
 if __name__ == "__main__":

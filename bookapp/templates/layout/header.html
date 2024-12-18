@@ -1,69 +1,123 @@
-<nav class="navbar navbar-expand-sm bg-dark navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="/">Book Sale</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#collapsibleNavbar">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+    <div class="container">
+        <a class="navbar-brand" href="/">
+            <i class="bi bi-book"></i> Book Store
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
             <span class="navbar-toggler-icon"></span>
         </button>
-        <div class="collapse navbar-collapse" id="collapsibleNavbar">
+
+        <div class="collapse navbar-collapse" id="navbarContent">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
-                    <a class="nav-link active" href="/">Trang chủ</a>
-                </li>
-                <!--                {%for a in authors%}-->
-                <!--                <li class="nav-item">-->
-                <!--                    <a class="nav-link" href="?author_id={{a.id}}">{{a.name}}</a>-->
-                <!--                </li>-->
-                <!--                {%endfor%}-->
-                <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
-                       data-bs-toggle="dropdown" aria-expanded="false">
-                        Tác giả
+                    <a class="nav-link active" href="/">
+                        <i class="bi bi-house"></i> Trang chủ
                     </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                </li>
+
+                <!-- Menu Tác giả -->
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-person"></i> Tác giả
+                    </a>
+                    <ul class="dropdown-menu">
                         {% for author in authors %}
-                        <li><a class="dropdown-item" href="/?author_id={{ author.id }}">{{ author.name }}</a></li>
+                        <li>
+                            <a class="dropdown-item" href="/?author_id={{ author.id }}">
+                                {{ author.name }}
+                            </a>
+                        </li>
                         {% endfor %}
                     </ul>
                 </li>
+
+                <!-- Menu Thể loại -->
                 <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button"
-                       data-bs-toggle="dropdown" aria-expanded="false">
-                        Thể loại
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <i class="bi bi-tags"></i> Thể loại
                     </a>
-                    <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
-                        {%for c in categories%}
-                        <li><a class="dropdown-item" href="/?category_id={{c.id}}">{{c.name}}</a></li>
+                    <ul class="dropdown-menu">
+                        {% for c in categories %}
+                        <li>
+                            <a class="dropdown-item" href="/?category_id={{c.id}}">
+                                {{c.name}}
+                            </a>
+                        </li>
                         {% endfor %}
                     </ul>
                 </li>
-                <!--                {%for c in categories%}-->
-                <!--                <li class="nav-item">-->
-                <!--                    <a class="nav-link" href="?category_id={{c.id}}">{{c.name}}</a>-->
-                <!--                </li>-->
-                <!--                {%endfor%}-->
-                {%if current_user.is_authenticated%}
-                <li class="nav-item">
-                    <a class="nav-link text-info" href="/login">
-                        <img src="{{current_user.avatar}}" width="25" class="fluid rounded">
-                        Chào bạn {{current_user.name}}
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-danger" href="/logout">&#128123; Đăng xuất </a>
-                </li>
-                {%else%}
-                <li class="nav-item">
-                    <a class="nav-link text-warning" href="/login">&#128123; Đăng nhập </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link text-primary" href="/register">&#128187; Đăng ký </a>
-                </li>
-                {%endif%}
+
+                <!-- Menu phân quyền -->
+                {% if current_user.is_authenticated %}
+                    {% if current_user.user_role == UserRoleEnum.MANAGER %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('import_page') }}">
+                                <i class="bi bi-box-arrow-in-down"></i> Nhập sách
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% if current_user.user_role == UserRoleEnum.STAFF %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('sale_page') }}">
+                                <i class="bi bi-cart"></i> Bán sách
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% if current_user.user_role == UserRoleEnum.ADMIN %}
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                                <i class="bi bi-speedometer2"></i> Quản lý
+                            </a>
+                        </li>
+                    {% endif %}
+                {% endif %}
             </ul>
-            <form class="d-flex">
-                <input class="form-control me-2" name="q" type="text" placeholder="Nhập từ khóa...">
-                <button class="btn btn-primary" type="submit">Tìm</button>
+
+            <!-- Thanh tìm kiếm -->
+            <form class="d-flex me-3">
+                <div class="input-group">
+                    <input class="form-control" type="search" name="q" placeholder="Tìm kiếm sách..."
+                           aria-label="Search">
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
             </form>
+
+            <!-- Menu user -->
+            <ul class="navbar-nav">
+                {% if current_user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <img src="{{ current_user.avatar }}"
+                                 class="rounded-circle me-1"
+                                 width="28" height="28"
+                                 alt="avatar">
+                            {{ current_user.name }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item text-danger" href="{{ url_for('logout_my_user') }}">
+                                    <i class="bi bi-box-arrow-right"></i> Đăng xuất
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link text-warning" href="{{ url_for('login_my_user') }}">
+                            <i class="bi bi-person-circle"></i> Đăng nhập
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link text-info" href="{{ url_for('register_user') }}">
+                            <i class="bi bi-person-plus"></i> Đăng ký
+                        </a>
+                    </li>
+                {% endif %}
+            </ul>
         </div>
     </div>
 </nav>

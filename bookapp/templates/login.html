@@ -1,20 +1,55 @@
-{%extends "layout/base.html"%}
-{%block title%}Đăng nhập{%endblock%}
-{%block content%}
-<form action="\login" method="post">
-    <h1 class="text-center text-info mt-1">Log In</h1>
-    <div class="form-floating mb-3 mt-3">
-        <input type="text" class="form-control" id="username" placeholder="Enter username" name="username" pattern="[a-zA-Z0-9]*" required>
-        <label for="username">Username</label>
-    </div>
+{% extends "layout/base.html" %}
 
-    <div class="form-floating mt-3 mb-3">
-        <input type="password" class="form-control" id="password" placeholder="Enter password" name="password" required>
-        <label for="password">Password</label>
+{% block title %}Đăng nhập{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <i class="bi bi-person-circle display-4 text-primary"></i>
+                    <h4 class="mt-2">Đăng nhập</h4>
+                </div>
+
+                <form method="post" action="{{ url_for('login_my_user') }}">
+                    <div class="form-floating mb-3">
+                        <input type="text"
+                               class="form-control"
+                               id="username"
+                               name="username"
+                               placeholder="Tên đăng nhập"
+                               pattern="[a-zA-Z0-9]*"
+                               required>
+                        <label for="username">Tên đăng nhập</label>
+                    </div>
+
+                    <div class="form-floating mb-4">
+                        <input type="password"
+                               class="form-control"
+                               id="password"
+                               name="password"
+                               placeholder="Mật khẩu"
+                               required>
+                        <label for="password">Mật khẩu</label>
+                    </div>
+
+                    {% if err_msg %}
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        {{ err_msg }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-box-arrow-in-right me-2"></i>Đăng nhập
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-    {%if err_msg%}
-    <div class="alert alert-danger">{{err_msg}}</div>
-    {%endif%}
-    <button class ="btn btn-success" type="submit">Log In</button>
-</form>
-{%endblock%}
+</div>
+{% endblock %}
