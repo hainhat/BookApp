@@ -127,12 +127,14 @@ class Order(db.Model):
     ordered_at = Column(DateTime, default=datetime.now())
     total_amount = Column(Float, default=0)
     payment_method = Column(Enum(PaymentMethodEnum))
+    delivery_address = Column(String(500), nullable=True)
     status = Column(Enum(OrderStatusEnum), default=OrderStatusEnum.PENDING)
     user = relationship('User', backref='orders', lazy=True)
     order_details = relationship('OrderDetail', backref='order', lazy='dynamic')
     created_at = Column(DateTime, default=datetime.now())
     updated_at = Column(DateTime, default=datetime.now(), onupdate=datetime.now())
     deleted_at = Column(DateTime, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
     __table_args__ = (
         Index('idx_ordered_at', 'ordered_at'),
         Index('idx_status', 'status'),
@@ -233,25 +235,25 @@ class StoreRules(db.Model):
         return f"Store Rules (Last updated: {self.updated_at})"
 
 
-def create_db_diagram():
-    # Create the directed graph
-    graph = create_schema_graph(
-        metadata=db.metadata,
-        engine=db.engine,  # Add the engine parameter
-        show_datatypes=True,
-        show_indexes=True,
-        rankdir='LR',
-        concentrate=False
-    )
-
-    # Write graph to file
-    graph.write_png('database_schema.png')
+# def create_db_diagram():
+#     # Create the directed graph
+#     graph = create_schema_graph(
+#         metadata=db.metadata,
+#         engine=db.engine,  # Add the engine parameter
+#         show_datatypes=True,
+#         show_indexes=True,
+#         rankdir='LR',
+#         concentrate=False
+#     )
+#
+#     # Write graph to file
+#     graph.write_png('database_schema.png')
 
 
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-        create_db_diagram()
+        # create_db_diagram()
 
         c1 = Category(name="Truyện tranh")
         c2 = Category(name="Tiểu thuyết")
@@ -275,10 +277,10 @@ if __name__ == "__main__":
 
         password = str(hashlib.md5("123".encode('utf-8')).hexdigest())
 
-        u1 = User(name='Nhat', username='user', password=password, user_role=UserRoleEnum.USER)
-        u2 = User(name='Nhat', username='admin', password=password, user_role=UserRoleEnum.ADMIN)
-        u3 = User(name='Nhat', username='staff', password=password, user_role=UserRoleEnum.STAFF)
-        u4 = User(name='Nhat', username='manager', password=password, user_role=UserRoleEnum.MANAGER)
+        u1 = User(name='Nhat User', username='user', password=password, user_role=UserRoleEnum.USER)
+        u2 = User(name='Nhat Admin', username='admin', password=password, user_role=UserRoleEnum.ADMIN)
+        u3 = User(name='Nhat Staff', username='staff', password=password, user_role=UserRoleEnum.STAFF)
+        u4 = User(name='Nhat manager', username='manager', password=password, user_role=UserRoleEnum.MANAGER)
         db.session.add_all([u1, u2, u3, u4])
         db.session.commit()
 
@@ -291,5 +293,15 @@ if __name__ == "__main__":
             )
             db.session.add(rules)
 
+        books = Book.query.all()
+        for book in books:
+            # Kiểm tra xem sách đã có inventory chưa
+            if not BookInventory.query.filter_by(book_id=book.id).first():
+                # Tạo inventory mới với số lượng mặc định là 100
+                inventory = BookInventory(
+                    book_id=book.id,
+                    quantity=100,
+                    imported_at=datetime.now()
+                )
+                db.session.add(inventory)
         db.session.commit()
-

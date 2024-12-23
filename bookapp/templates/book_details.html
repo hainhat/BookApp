@@ -1,15 +1,29 @@
-{%extends "layout/base.html"%}
-{%block title%}Chi tiết sản phẩm{%endblock%}
-{%block content%}
-<div class ="row">
-    <div class="col-md-5 col-12">
-        <img src="{{book.image}}" class="img-fluid"/>
-    </div>
-    <div class ="col-md-7 col-12">
-        <h1 class="text-danger">{{book.name}}</h1>
-        <h3 class="text-danger">{{book.price}}</h3>
-        <p> Tác giả : {{book.author.name}}</p>
-        <p> Thể loại : {{book.category.name}}</p>
+{% extends "layout/base.html" %}
+{% block title %}Chi tiết sản phẩm{% endblock %}
+{% block content %}
+<div class="container my-5">
+    <div class="row g-4">
+        <!-- Book Image -->
+        <div class="col-md-5 col-12">
+            <img src="{{ book.image }}" alt="{{ book.name }}" class="img-fluid rounded shadow-sm">
+        </div>
+        <!-- Book Details -->
+        <div class="col-md-7 col-12">
+            <h1 class="text-danger fw-bold">{{ book.name }}</h1>
+            <h3 class="text-success fw-bold">{{ "{:,.0f}".format(book.price) }} VND</h3>
+            <p class="mb-2"><strong>Tác giả:</strong> {{ book.author.name }}</p>
+            <p class="mb-2"><strong>Thể loại:</strong> {{ book.category.name }}</p>
+            <div class="mt-4">
+                <a href="#" onclick="addToCart({{book.id}},'{{book.name}}',{{book.price}})"" class="btn btn-primary btn-lg">
+                    <i class="bi bi-cart-plus"></i> Thêm vào giỏ hàng
+                </a>
+                <a href="javascript:history.back()" class="btn btn-outline-secondary btn-lg">
+                    <i class="bi bi-arrow-left"></i> Quay lại
+                </a>
+            </div>
+
+
+        </div>
     </div>
 </div>
-{%endblock%}
+{% endblock %}

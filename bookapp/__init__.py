@@ -3,6 +3,7 @@ from flask_sqlalchemy import SQLAlchemy
 from urllib.parse import quote
 from flask_login import LoginManager
 import cloudinary
+from flask_babel import Babel
 
 app = Flask(__name__)
 app.secret_key = "hnsahfiuh43q8"
@@ -14,3 +15,4 @@ login = LoginManager(app=app)
 cloudinary.config(cloud_name='dcncfkvwv',
                   api_key='429919544328797',
                   api_secret='8ceqNUyck4BnLwqIaMDG5ap_hBk')
+babel = Babel(app)

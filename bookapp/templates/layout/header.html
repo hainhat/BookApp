@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
     <div class="container">
         <a class="navbar-brand" href="/">
-            <i class="bi bi-book"></i> Book Store
+            <i class="bi bi-book-fill"></i> Book Store
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
             <span class="navbar-toggler-icon"></span>
@@ -11,14 +11,14 @@
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
                     <a class="nav-link active" href="/">
-                        <i class="bi bi-house"></i> Trang chủ
+                        <i class="bi bi-house-fill"></i> Trang chủ
                     </a>
                 </li>
 
                 <!-- Menu Tác giả -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                        <i class="bi bi-person"></i> Tác giả
+                        <i class="bi bi-person-badge-fill"></i> Tác giả
                     </a>
                     <ul class="dropdown-menu">
                         {% for author in authors %}
@@ -34,7 +34,7 @@
                 <!-- Menu Thể loại -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                        <i class="bi bi-tags"></i> Thể loại
+                        <i class="bi bi-tags-fill"></i> Thể loại
                     </a>
                     <ul class="dropdown-menu">
                         {% for c in categories %}
@@ -49,29 +49,21 @@
 
                 <!-- Menu phân quyền -->
                 {% if current_user.is_authenticated %}
-                    {% if current_user.user_role == UserRoleEnum.MANAGER %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('import_page') }}">
-                                <i class="bi bi-box-arrow-in-down"></i> Nhập sách
-                            </a>
-                        </li>
-                    {% endif %}
+                {% if current_user.user_role == UserRoleEnum.MANAGER %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('import_page') }}">
+                        <i class="bi bi-box-arrow-in-down"></i> Nhập sách
+                    </a>
+                </li>
+                {% endif %}
+                {% if current_user.user_role == UserRoleEnum.STAFF %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('sale_page') }}">
+                        <i class="bi bi-cart"></i> Bán sách
+                    </a>
+                </li>
+                {% endif %}
 
-                    {% if current_user.user_role == UserRoleEnum.STAFF %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('sale_page') }}">
-                                <i class="bi bi-cart"></i> Bán sách
-                            </a>
-                        </li>
-                    {% endif %}
-
-                    {% if current_user.user_role == UserRoleEnum.ADMIN %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
-                                <i class="bi bi-speedometer2"></i> Quản lý
-                            </a>
-                        </li>
-                    {% endif %}
                 {% endif %}
             </ul>
 
@@ -89,34 +81,43 @@
             <!-- Menu user -->
             <ul class="navbar-nav">
                 {% if current_user.is_authenticated %}
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                            <img src="{{ current_user.avatar }}"
-                                 class="rounded-circle me-1"
-                                 width="28" height="28"
-                                 alt="avatar">
-                            {{ current_user.name }}
-                        </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li>
-                                <a class="dropdown-item text-danger" href="{{ url_for('logout_my_user') }}">
-                                    <i class="bi bi-box-arrow-right"></i> Đăng xuất
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
+                <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                        <img src="{{ current_user.avatar }}"
+                             class="rounded-circle me-1"
+                             width="28" height="28"
+                             alt="avatar">
+                        {{ current_user.name }}
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <a class="dropdown-item text-info" href="{{url_for('list_orders')}}">
+                                <i class="bi bi-list-check"></i> Đơn hàng
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item text-danger" href="{{ url_for('logout_my_user') }}">
+                                <i class="bi bi-box-arrow-right"></i> Đăng xuất
+                            </a>
+                        </li>
+                    </ul>
+                </li>
                 {% else %}
-                    <li class="nav-item">
-                        <a class="nav-link text-warning" href="{{ url_for('login_my_user') }}">
-                            <i class="bi bi-person-circle"></i> Đăng nhập
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link text-info" href="{{ url_for('register_user') }}">
-                            <i class="bi bi-person-plus"></i> Đăng ký
-                        </a>
-                    </li>
+                <li class="nav-item">
+                    <a class="nav-link text-warning" href="{{ url_for('login_my_user') }}">
+                        <i class="bi bi-person-fill-check"></i> Đăng nhập
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-info" href="{{ url_for('register_user') }}">
+                        <i class="bi bi-person-fill-add"></i> Đăng ký
+                    </a>
+                </li>
                 {% endif %}
+                <li class="nav-item">
+                    <a class="nav-link" href="/cart"><i class="bi bi-basket3-fill text-danger"></i>
+                        <span class="badge bg-danger class-counter">{{stats_cart.total_quantity}}</span></a>
+                </li>
             </ul>
         </div>
     </div>

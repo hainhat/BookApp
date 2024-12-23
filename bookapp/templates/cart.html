@@ -1,0 +1,84 @@
+{% extends "layout/base.html" %}
+{% block title %}Giỏ hàng{% endblock %}
+{% block content %}
+<div class="container my-5">
+    <h3 class="text-info mb-4 text-center">Giỏ hàng</h3>
+    {% if 'cart' in session and session['cart']|length > 0 %}
+    <div class="table-container">
+        <table class="table table-bordered table-hover align-middle">
+            <thead class="table-light">
+            <tr>
+                <th>ID</th>
+                <th>Tên sách</th>
+                <th>Đơn giá</th>
+                <th>Số lượng</th>
+                <th>Thành tiền</th>
+                <th class="text-center">Xoá</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for c in session['cart'].values() %}
+            {% set inventory = get_book_inventory(c.id) %}
+            <tr data-id="{{ c.id }}" data-price="{{ c.price }}">
+                <td>{{ c.id }}</td>
+                <td>{{ c.name }}</td>
+                <td class="product-price">{{ "{:,.0f}".format(c.price) }} VND</td>
+                <td style="width: 150px;">
+                    <input type="number" min="1" value="{{ c.quantity }}"
+                           max="{{ (inventory.quantity + c.quantity) if inventory else c.quantity }}"
+                           class="form-control text-center quantity-input"
+                           onchange="updateQuantity('{{ c.id }}', this.value, {{ c.price }})">
+                    <small class="text-muted">Còn lại: {{ inventory.quantity if inventory else 0 }} cuốn</small>
+                </td>
+                <td class="product-total">{{ "{:,.0f}".format(c.price * c.quantity) }} VND</td>
+                <td class="text-center">
+                    <button class="btn btn-danger btn-sm" onclick="deleteCartItem('{{ c.id }}')">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="card mt-3">
+            <div class="card-body">
+                <div class="d-flex flex-column">
+                    <h5 class="mb-2">Tổng số lượng: <span id="total-quantity" class="text-primary">{{ stats_cart.total_quantity }}</span>
+                    </h5>
+                    <h5>Tổng tiền: <span id="total-amount" class="text-danger">{{ "{:,.0f}".format(stats_cart.total_amount) }}</span>
+                        VND</h5>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between align-items-center mt-4">
+            <a href="/" class="btn btn-secondary">
+                <i class="bi bi-caret-left-fill"></i> Tiếp tục mua
+            </a>
+            <button class="btn btn-success" onclick="window.location.href='{{ url_for('order') }}'">
+                <i class="bi bi-bag-check-fill"></i> Thanh toán
+            </button>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info text-center">Không có sản phẩm nào</div>
+    {% endif %}
+</div>
+
+{% endblock %}
+{% block scripts %}
+<script>
+    // Thêm validation cho input số lượng
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.addEventListener('input', function () {
+            const value = parseInt(this.value);
+            const min = parseInt(this.min);
+            const max = parseInt(this.max);
+
+            if (value < min) this.value = min;
+            if (value > max) this.value = max;
+        });
+    });
+</script>
+{% endblock %}

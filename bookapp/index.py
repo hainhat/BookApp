@@ -1,13 +1,19 @@
 import math
+from datetime import datetime, timedelta
 
-from flask import render_template, request, redirect, url_for, flash
-import dao
-from bookapp import app, admin, login
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+
+from flask import render_template, request, redirect, url_for, flash, jsonify, session, abort
+import dao, utils
+from bookapp import app, admin, login, db
 from flask_login import login_user, logout_user, current_user, login_required
 import cloudinary.uploader
-
-from models import UserRoleEnum
+from models import UserRoleEnum, Order, PaymentMethodEnum, OrderStatusEnum, OrderDetail
 from utils import roles_required
+from flask_apscheduler import APScheduler
+
+scheduler = APScheduler()
 
 
 @app.route("/")
@@ -33,7 +39,9 @@ def common_attribute():
     return {
         "categories": dao.load_categories(),
         "authors": dao.load_authors(),
-        "UserRoleEnum": UserRoleEnum
+        "UserRoleEnum": UserRoleEnum,
+        "stats_cart": utils.count_cart(session.get("cart")),
+        "get_book_inventory": dao.get_book_inventory
     }
 
 
@@ -56,11 +64,8 @@ def login_my_user():
         user = dao.auth_user(username=username, password=password)
         if user:
             login_user(user=user)
-
             # Chuyển hướng về trang chủ theo role
-            if user.user_role == UserRoleEnum.ADMIN:
-                return redirect(url_for('admin_dashboard'))
-            elif user.user_role == UserRoleEnum.MANAGER:
+            if user.user_role == UserRoleEnum.MANAGER:
                 return redirect(url_for('import_page'))
             elif user.user_role == UserRoleEnum.STAFF:
                 return redirect(url_for('sale_page'))
@@ -143,14 +148,220 @@ def import_book(book_id):
             import_price=import_price
         )
 
-        flash("Nhập sách thành công", "success")
+        flash("Nhập sách thành công", "import_success")
 
     except Exception as ex:
-        flash(f"Lỗi: {str(ex)}", "error")
+        flash(f"Lỗi: {str(ex)}", "import_error")
 
     return redirect(url_for('import_page'))
 
 
+@app.route("/api/carts", methods=['post'])
+def add_to_cart():
+    print("Received request data:", request.json)  # Debug log
+    cart = session.get("cart")
+    if not cart:
+        cart = {}
+
+    id = str(request.json.get('id'))
+    quantity = request.json.get('quantity', 1)
+
+    # Kiểm tra tồn kho
+    inventory = dao.get_book_inventory(id)
+    if not inventory or inventory.quantity < quantity:
+        return jsonify({"error": "Không đủ số lượng sách trong kho"}), 400
+
+    # Cập nhật số lượng trong kho
+    if dao.update_inventory(id, quantity):
+        if id in cart:
+            cart[id]["quantity"] += quantity
+        else:
+            cart[id] = {
+                "id": id,
+                "name": request.json.get('name'),
+                "price": float(request.json.get('price')),
+                "quantity": quantity
+            }
+        session['cart'] = cart
+        result = utils.count_cart(cart)
+        print("Sending response:", result)  # Debug log
+        return jsonify(result)
+
+    return jsonify({"error": "Không thể cập nhật số lượng"}), 400
+
+
+@app.route("/cart")
+def cart():
+    return render_template("cart.html")
+
+
+@app.route("/api/carts/<product_id>", methods=['DELETE'])
+def delete_cart(product_id):
+    cart = session.get('cart')
+    if cart and product_id in cart:
+        # Khôi phục số lượng sách trong kho
+        quantity = cart[product_id]['quantity']
+        dao.restore_inventory(product_id, quantity)
+
+        del cart[product_id]
+        session['cart'] = cart
+
+    return jsonify(utils.count_cart(cart))
+
+
+@app.route("/api/carts/<product_id>", methods=['PUT'])
+def update_cart(product_id):
+    try:
+        cart = session.get('cart', {})
+        data = request.json
+        new_quantity = int(data.get('quantity'))
+        current_quantity = cart[product_id]['quantity']
+
+        if new_quantity > current_quantity:
+            # Nếu tăng số lượng, kiểm tra và cập nhật inventory
+            increase = new_quantity - current_quantity
+            inventory = dao.get_book_inventory(product_id)
+            if not inventory or inventory.quantity < increase:
+                return jsonify({"error": "Không đủ số lượng sách trong kho"}), 400
+            dao.update_inventory(product_id, increase)
+        else:
+            # Nếu giảm số lượng, khôi phục inventory
+            decrease = current_quantity - new_quantity
+            dao.restore_inventory(product_id, decrease)
+
+        # Cập nhật số lượng trong giỏ hàng
+        cart[product_id]['quantity'] = new_quantity
+        session['cart'] = cart
+
+        return jsonify({
+            "cart_stats": utils.count_cart(cart),
+            "product_total": cart[product_id]['price'] * new_quantity
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@app.route("/order", methods=['GET', 'POST'])
+@login_required
+def order():
+    rules = dao.get_store_rules()
+    hours = rules.order_cancel_hours
+    # if 'cart' not in session or not session['cart']:
+    #     flash("Giỏ hàng trống!", "warning")
+    #     return redirect(url_for('cart'))
+
+    if request.method == 'POST':
+        payment_method = request.form.get('payment_method')
+        delivery_address = request.form.get('delivery_address') if payment_method == 'ONLINE' else None
+
+        # Validate dữ liệu
+        # if payment_method == 'ONLINE' and not delivery_address:
+        #     flash("Vui lòng nhập địa chỉ giao hàng!", "error")
+        #     return redirect(url_for('order'))
+
+        try:
+            # Tạo đơn hàng mới
+            order = Order(
+                user_id=current_user.id,
+                payment_method=PaymentMethodEnum[payment_method],
+                delivery_address=delivery_address,
+                ordered_at=datetime.now()
+            )
+
+            # Set status và thời gian hết hạn dựa vào phương thức thanh toán
+            if payment_method == 'CASH':
+                order.status = OrderStatusEnum.PENDING
+                rules = dao.get_store_rules()
+                order.expires_at = datetime.now() + timedelta(hours=rules.order_cancel_hours)
+            else:
+                order.status = OrderStatusEnum.PAID
+
+            db.session.add(order)
+            db.session.flush()  # Để lấy order.id
+
+            # Thêm chi tiết đơn hàng
+            total_amount = 0
+            for item in session['cart'].values():
+                detail = OrderDetail(
+                    order_id=order.id,
+                    book_id=item['id'],
+                    quantity=item['quantity'],
+                    unit_price=item['price']
+                )
+                total_amount += item['quantity'] * item['price']
+                db.session.add(detail)
+
+            order.total_amount = total_amount
+            db.session.commit()
+
+            # Xóa giỏ hàng sau khi đặt hàng thành công
+            session.pop('cart', None)
+
+            # flash("Đặt hàng thành công!", "order_success")
+            return redirect(url_for('order_details', order_id=order.id))
+
+        except Exception as e:
+            db.session.rollback()
+            # flash(f"Lỗi khi đặt hàng: {str(e)}", "order_error")
+            return redirect(url_for('cart'))
+
+    return render_template('order.html', hours=hours)
+
+
+# Route hiển thị trang thành công
+@app.route('/order_details/<int:order_id>')
+@login_required
+def order_details(order_id):
+    rules = dao.get_store_rules()
+    hours = rules.order_cancel_hours
+    order = Order.query.get(order_id)
+    # Kiểm tra xem đơn hàng có phải của user hiện tại không
+    # if order.user_id != current_user.id:
+    #     abort(403)
+    return render_template('order_details.html', order=order, hours=hours)
+
+
+# Scheduled task để hủy đơn hàng quá hạn
+def init_scheduler(app):
+    scheduler = BackgroundScheduler()
+
+    def check_expired_orders():
+        with app.app_context():
+            now = datetime.now()
+            expired_orders = Order.query.filter(
+                Order.status == OrderStatusEnum.PENDING,
+                Order.payment_method == PaymentMethodEnum.CASH,
+                Order.expires_at < now
+            ).all()
+
+            for order in expired_orders:
+                order.status = OrderStatusEnum.CANCELLED
+
+            if expired_orders:
+                db.session.commit()
+                print(f"Đã hủy {len(expired_orders)} đơn hàng quá hạn")
+
+    # Sử dụng add_job thay vì task
+    scheduler.add_job(
+        func=check_expired_orders,
+        trigger=IntervalTrigger(hours=1),
+        id='check_expired_orders',
+        name='Check and cancel expired orders',
+        replace_existing=True
+    )
+
+    scheduler.start()
+    return scheduler
+
+
+@app.route("/list_orders")
+@login_required
+def list_orders():
+    orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.ordered_at.desc()).all()
+    return render_template('list_orders.html', orders=orders)
+
+
 if __name__ == '__main__':
     with app.app_context():
+        init_scheduler(app)
         app.run(debug=True)

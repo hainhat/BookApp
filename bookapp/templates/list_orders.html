@@ -1,0 +1,90 @@
+{% extends "layout/base.html" %}
+{% block title %}Đơn hàng của tôi{% endblock %}
+{% block content %}
+<div class="container my-5">
+    <h3 class="text-info mb-4 text-center">Đơn hàng của tôi</h3>
+
+    {% if orders %}
+        {% for order in orders %}
+        <div class="card mb-3">
+            <div class="card-header bg-light">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">Mã đơn #{{ order.id }}</h5>
+                        <small class="text-muted">Ngày đặt: {{ order.ordered_at.strftime('%d/%m/%Y %H:%M') }}</small>
+                    </div>
+                    <div>
+                        <span class="badge {% if order.status.name == 'PENDING' %}bg-warning text-dark
+                                        {% elif order.status.name == 'PAID' %}bg-success
+                                        {% elif order.status.name == 'CANCELLED' %}bg-danger
+                                        {% else %}bg-secondary{% endif %}">
+                            {% if order.status.name == 'PENDING' %}
+                                Chờ thanh toán
+                            {% elif order.status.name == 'PAID' %}
+                                Đã thanh toán
+                            {% elif order.status.name == 'CANCELLED' %}
+                                Đã hủy
+                            {% else %}
+                                {{ order.status.name }}
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Sách</th>
+                                <th>Số lượng</th>
+                                <th>Đơn giá</th>
+                                <th class="text-end">Thành tiền</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for detail in order.order_details %}
+                            <tr>
+                                <td>{{ detail.book.name }}</td>
+                                <td>{{ detail.quantity }}</td>
+                                <td>{{ "{:,.0f}".format(detail.unit_price) }} VND</td>
+                                <td class="text-end">{{ "{:,.0f}".format(detail.quantity * detail.unit_price) }} VND</td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="table-info">
+                                <td colspan="3" class="text-end fw-bold">Tổng cộng:</td>
+                                <td class="text-end fw-bold">{{ "{:,.0f}".format(order.total_amount) }} VND</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="mt-3">
+                    {% if order.payment_method.name == 'CASH' %}
+                        <p class="mb-1"><i class="bi bi-cash"></i> Thanh toán trực tiếp tại nhà sách</p>
+                        {% if order.status.name == 'PENDING' %}
+                            <p class="text-warning">
+                                <i class="bi bi-clock"></i> 
+                                Vui lòng đến nhận và thanh toán trước: {{ order.expires_at.strftime('%H:%M %d/%m/%Y') }}
+                            </p>
+                        {% endif %}
+                    {% else %}
+                        <p class="mb-1"><i class="bi bi-credit-card"></i> Thanh toán online</p>
+                        {% if order.delivery_address %}
+                            <p class="mb-0">
+                                <i class="bi bi-truck"></i> 
+                                Địa chỉ giao hàng: {{ order.delivery_address }}
+                            </p>
+                        {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="alert alert-info text-center">
+            <i class="bi bi-inbox"></i> Bạn chưa có đơn hàng nào
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

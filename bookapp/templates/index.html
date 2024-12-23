@@ -11,15 +11,24 @@
     </ul>
     {%endif%}
     <div class="row">
-        {%for b in books%}
+        {%for b, inventory in books%}
         <div class="col-md-3 col-12" style="padding: 0.7rem;">
             <div class="card">
                 <img class="card-img-top" src="{{b.image}}" alt="{{b.name}}">
                 <div class="card-body">
                     <h4 class="card-title">{{b.name}}</h4>
-                    <p class="card-text">{{b.price}}</p>
+                    <p class="card-text">{{ "{:,.0f}".format(b.price) }} VND</p>
+                    <p class="card-text {% if not inventory or inventory.quantity == 0 %}text-danger{% else %}text-success{% endif %}">
+                        Còn lại: {{ inventory.quantity if inventory else 0 }}
+                    </p>
                     <a href="books/{{b.id}}" class="btn btn-primary">Xem chi tiết</a>
-                    <a href="#" class="btn btn-danger">Đặt hàng</a>
+                    {% if not inventory or inventory.quantity == 0 %}
+                    <button class="btn btn-secondary" disabled>Hết hàng</button>
+                    {% else %}
+                    <a href="#" onclick="addToCart({{b.id}}, '{{b.name}}', {{b.price}})" class="btn btn-danger">Đặt
+                        hàng</a>
+                    {% endif %}
+                    <!--                        <a href="#" onclick="addToCart({{b.id}},'{{b.name}}',{{b.price}})" class="btn btn-danger">Đặt hàng</a>-->
                 </div>
             </div>
         </div>

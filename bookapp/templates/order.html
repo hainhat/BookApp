@@ -1,0 +1,102 @@
+{% extends "layout/base.html" %}
+{% block title %}Thanh toán{% endblock %}
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Thanh toán đơn hàng</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Chi tiết giỏ hàng -->
+                    <h5 class="mb-4">Chi tiết đơn hàng:</h5>
+                    <table class="table">
+                        <tbody>
+                        {% for item in session['cart'].values() %}
+                        <tr>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.quantity }} x {{ "{:,.0f}".format(item.price) }} VND</td>
+                            <td class="text-end">{{ "{:,.0f}".format(item.quantity * item.price) }} VND</td>
+                        </tr>
+                        {% endfor %}
+                        <tr class="table-info">
+                            <td colspan="2" class="fw-bold">Tổng cộng:</td>
+                            <td class="text-end fw-bold">{{ "{:,.0f}".format(stats_cart.total_amount) }} VND</td>
+                        </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Form thanh toán -->
+                    <form method="post" action="{{ url_for('order') }}" id="paymentForm">
+                        <div class="mb-4">
+                            <h5>Chọn phương thức thanh toán:</h5>
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="payment_method"
+                                       id="cashPayment" value="CASH" checked
+                                       onclick="toggleAddress(false)">
+                                <label class="form-check-label" for="cashPayment">
+                                    <i class="bi bi-cash-coin"></i> Thanh toán trực tiếp tại nhà sách (KDC Nhơn Đức, Nhà Bè)
+                                    <small class="text-muted d-block">
+                                        Vui lòng đến nhận và thanh toán trong vòng {{hours}} tiếng
+                                    </small>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="payment_method"
+                                       id="onlinePayment" value="ONLINE"
+                                       onclick="toggleAddress(true)">
+                                <label class="form-check-label" for="onlinePayment">
+                                    <i class="bi bi-credit-card-2-back"></i> Thanh toán online (miễn phí giao hàng)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Địa chỉ giao hàng (ẩn/hiện) -->
+                        <div id="addressSection" style="display: none;" class="mb-4">
+                            <label for="delivery_address" class="form-label">Địa chỉ giao hàng:</label>
+                            <textarea class="form-control" id="delivery_address"
+                                      name="delivery_address" rows="3"
+                                      placeholder="Nhập địa chỉ giao hàng của bạn" ></textarea>
+                        </div>
+
+                        <!-- Nút điều hướng -->
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ url_for('cart') }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Quay lại giỏ hàng
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-circle"></i> Xác nhận đặt hàng
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleAddress(show) {
+        const addressSection = document.getElementById('addressSection');
+        const addressInput = document.getElementById('delivery_address');
+
+        addressSection.style.display = show ? 'block' : 'none';
+        addressInput.required = show;
+        if (!show) addressInput.value = '';
+    }
+
+    // Validate form trước khi submit
+    document.getElementById('paymentForm').onsubmit = function (e) {
+        const isOnline = document.getElementById('onlinePayment').checked;
+        const address = document.getElementById('delivery_address').value;
+
+        if (isOnline && !address.trim()) {
+            e.preventDefault();
+            alert('Vui lòng nhập địa chỉ giao hàng');
+            return false;
+        }
+        return true;
+    }
+</script>
+{% endblock %}

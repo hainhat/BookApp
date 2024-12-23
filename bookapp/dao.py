@@ -16,7 +16,7 @@ def load_authors():
 
 
 def load_book(q=None, cate_id=None, au_id=None, page=None):
-    query = Book.query
+    query = db.session.query(Book, BookInventory).outerjoin(BookInventory)
     if q:
         query = query.filter(Book.name.contains(q))
     if cate_id:
@@ -27,7 +27,6 @@ def load_book(q=None, cate_id=None, au_id=None, page=None):
     if page:
         page_size = app.config["PAGE_SIZE"]
         start = (int(page) - 1) * page_size
-
         query = query.slice(start, start + page_size)
     return query.all()
 
@@ -87,9 +86,8 @@ def create_import(manager_id, book_id, quantity, import_price):
     return inventory
 
 
-
 def get_book_inventory(book_id):
-    return BookInventory.query.filter_by(book_id=book_id).first()
+    return BookInventory.query.filter_by(book_id=int(book_id)).first()
 
 
 def update_inventory(book_id, quantity_sold):
@@ -100,6 +98,21 @@ def update_inventory(book_id, quantity_sold):
             db.session.commit()
             return True
     return False
+
+
+def restore_inventory(book_id, quantity):
+    inventory = BookInventory.query.filter_by(book_id=book_id).first()
+    if inventory:
+        inventory.quantity += quantity
+        db.session.commit()
+        return True
+    return False
+
+
+def check_inventory():
+    inventories = BookInventory.query.all()
+    for inv in inventories:
+        print(f"Book ID: {inv.book_id}, Quantity: {inv.quantity}")
 
 
 def calculate_total_amount(receipt_id):
@@ -129,6 +142,52 @@ def add_receipt_detail(receipt_id, book_id, quantity, unit_price):
     db.session.add(detail)
     db.session.commit()
     return detail
+
+
+def create_order(user_id, payment_method, delivery_address=None):
+    order = Order(
+        user_id=user_id,
+        payment_method=payment_method,
+        delivery_address=delivery_address,
+        status=OrderStatusEnum.PENDING,
+        ordered_at=datetime.now()
+    )
+    db.session.add(order)
+    return order
+
+
+def add_order_detail(order_id, book_id, quantity, unit_price):
+    detail = OrderDetail(
+        order_id=order_id,
+        book_id=book_id,
+        quantity=quantity,
+        unit_price=unit_price
+    )
+    db.session.add(detail)
+    return detail
+
+
+def get_orders_by_user(user_id):
+    return Order.query.filter_by(user_id=user_id).order_by(Order.ordered_at.desc()).all()
+
+
+def get_order_by_id(order_id):
+    return Order.query.get(order_id)
+
+
+def cancel_expired_orders():
+    """Hủy các đơn hàng thanh toán trực tiếp đã quá hạn"""
+    expired_orders = Order.query.filter(
+        Order.payment_method == PaymentMethodEnum.CASH,
+        Order.status == OrderStatusEnum.PENDING,
+        Order.expires_at < datetime.now()
+    ).all()
+
+    for order in expired_orders:
+        order.status = OrderStatusEnum.CANCELLED
+
+    db.session.commit()
+    return len(expired_orders)
 
 
 if __name__ == "__main__":

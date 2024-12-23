@@ -18,6 +18,7 @@ class MyAuthorView(ModelView):
 
 class MyBookView(ModelView):
     column_list = ['id', 'name', 'price', 'category_id', 'author_id', 'image']
+    form_excluded_columns = ['receipt_details', 'order_details', 'inventory']
     column_searchable_list = ['name']
     column_filters = ['price']
     can_export = True
