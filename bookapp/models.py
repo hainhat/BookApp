@@ -197,23 +197,23 @@ class ReceiptDetail(db.Model):
 
 
 # Thống kê
-class MonthlyStatistics(db.Model):
-    id = Column(Integer, primary_key=True, autoincrement=True)
-    month = Column(Integer, nullable=False)
-    year = Column(Integer, nullable=False)
-    category_id = Column(Integer, ForeignKey(Category.id), nullable=False)
-    total_revenue = Column(Float, default=0)
-    total_orders = Column(Integer, default=0)
-    category = relationship('Category', lazy=True)
-    __table_args__ = (
-        UniqueConstraint('month', 'year', 'category_id', name='unique_monthly_stats'),
-        CheckConstraint('month BETWEEN 1 AND 12', name='check_valid_month'),
-        CheckConstraint('total_revenue >= 0', name='check_revenue'),
-        CheckConstraint('total_orders >= 0', name='check_orders'),
-    )
-
-    def __str__(self):
-        return f"Stats for {self.category.name} - {self.month}/{self.year}"
+# class MonthlyStatistics(db.Model):
+#     id = Column(Integer, primary_key=True, autoincrement=True)
+#     month = Column(Integer, nullable=False)
+#     year = Column(Integer, nullable=False)
+#     category_id = Column(Integer, ForeignKey(Category.id), nullable=False)
+#     total_revenue = Column(Float, default=0)
+#     total_orders = Column(Integer, default=0)
+#     category = relationship('Category', lazy=True)
+#     __table_args__ = (
+#         UniqueConstraint('month', 'year', 'category_id', name='unique_monthly_stats'),
+#         CheckConstraint('month BETWEEN 1 AND 12', name='check_valid_month'),
+#         CheckConstraint('total_revenue >= 0', name='check_revenue'),
+#         CheckConstraint('total_orders >= 0', name='check_orders'),
+#     )
+#
+#     def __str__(self):
+#         return f"Stats for {self.category.name} - {self.month}/{self.year}"
 
 
 # Quy định
