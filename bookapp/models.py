@@ -280,7 +280,7 @@ if __name__ == "__main__":
         u1 = User(name='Nhat User', username='user', password=password, user_role=UserRoleEnum.USER)
         u2 = User(name='Nhat Admin', username='admin', password=password, user_role=UserRoleEnum.ADMIN)
         u3 = User(name='Nhat Staff', username='staff', password=password, user_role=UserRoleEnum.STAFF)
-        u4 = User(name='Nhat manager', username='manager', password=password, user_role=UserRoleEnum.MANAGER)
+        u4 = User(name='Nhat Manager', username='manager', password=password, user_role=UserRoleEnum.MANAGER)
         db.session.add_all([u1, u2, u3, u4])
         db.session.commit()
 

@@ -58,12 +58,16 @@
                 {% endif %}
                 {% if current_user.user_role == UserRoleEnum.STAFF %}
                 <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('order_page') }}">
+                        <i class="bi bi-cart"></i> Đơn online
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('sale_page') }}">
                         <i class="bi bi-cart"></i> Bán sách
                     </a>
                 </li>
                 {% endif %}
-
                 {% endif %}
             </ul>
 

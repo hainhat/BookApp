@@ -24,11 +24,12 @@
                 <td>{{ c.name }}</td>
                 <td class="product-price">{{ "{:,.0f}".format(c.price) }} VND</td>
                 <td style="width: 150px;">
+                    {% set inventory = get_book_inventory(c.id) %}
                     <input type="number" min="1" value="{{ c.quantity }}"
                            max="{{ (inventory.quantity + c.quantity) if inventory else c.quantity }}"
                            class="form-control text-center quantity-input"
                            onchange="updateQuantity('{{ c.id }}', this.value, {{ c.price }})">
-                    <small class="text-muted">Còn lại: {{ inventory.quantity if inventory else 0 }} cuốn</small>
+                    <small class="text-muted">Còn lại: <span class="inventory-quantity">{{ inventory.quantity if inventory else 0 }}</span></small>
                 </td>
                 <td class="product-total">{{ "{:,.0f}".format(c.price * c.quantity) }} VND</td>
                 <td class="text-center">
@@ -56,9 +57,13 @@
             <a href="/" class="btn btn-secondary">
                 <i class="bi bi-caret-left-fill"></i> Tiếp tục mua
             </a>
+            {%if current_user.is_authenticated%}
             <button class="btn btn-success" onclick="window.location.href='{{ url_for('order') }}'">
                 <i class="bi bi-bag-check-fill"></i> Thanh toán
             </button>
+            {%else%}
+            <div><a href="/login?next=/cart">Đăng nhập</a> để thanh toán</div>
+            {%endif%}
         </div>
     </div>
     {% else %}
@@ -78,6 +83,74 @@
 
             if (value < min) this.value = min;
             if (value > max) this.value = max;
+        });
+    });
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        const row = input.closest('tr');
+        const inventoryText = row.querySelector('small.text-muted');
+
+        // Thêm nút tăng/giảm số lượng
+        const createButton = (text, className, clickHandler) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `btn btn-sm ${className}`;
+            button.textContent = text;
+            button.onclick = clickHandler;
+            return button;
+        };
+
+        // Tạo div container cho input và buttons
+        const container = document.createElement('div');
+        container.className = 'd-flex align-items-center';
+
+        // Nút giảm
+        const decreaseBtn = createButton('-', 'btn-outline-secondary', () => {
+            const currentValue = parseInt(input.value);
+            if (currentValue > 1) {
+                input.value = currentValue - 1;
+                updateQuantity(row.dataset.id, input.value, parseFloat(row.dataset.price));
+            }
+        });
+
+        // Nút tăng
+        const increaseBtn = createButton('+', 'btn-outline-secondary', () => {
+            const currentValue = parseInt(input.value);
+            const maxValue = parseInt(input.max);
+            if (currentValue < maxValue) {
+                input.value = currentValue + 1;
+                updateQuantity(row.dataset.id, input.value, parseFloat(row.dataset.price));
+            }
+        });
+
+        // Thay thế input bằng container mới
+        input.parentNode.replaceChild(container, input);
+        container.appendChild(decreaseBtn);
+        container.appendChild(input);
+        container.appendChild(increaseBtn);
+
+        // Xử lý khi nhập trực tiếp vào input
+        input.addEventListener('input', function () {
+            let value = parseInt(this.value);
+            const min = parseInt(this.min);
+            const max = parseInt(this.max);
+
+            // Kiểm tra giá trị hợp lệ
+            if (isNaN(value) || value < min) {
+                value = min;
+            } else if (value > max) {
+                value = max;
+            }
+
+            // Cập nhật giá trị và gọi API
+            this.value = value;
+            updateQuantity(row.dataset.id, value, parseFloat(row.dataset.price));
+        });
+
+        // Chặn việc nhập chữ vào input số lượng
+        input.addEventListener('keypress', function (e) {
+            if (!/[0-9]/.test(e.key)) {
+                e.preventDefault();
+            }
         });
     });
 </script>

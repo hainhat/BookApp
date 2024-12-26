@@ -12,7 +12,7 @@
     {%endif%}
     <div class="row">
         {%for b, inventory in books%}
-        <div class="col-md-3 col-12" style="padding: 0.7rem;">
+        <div class="col-md-3 col-12" style="padding: 0.7rem;" data-book-id="{{b.id}}">
             <div class="card">
                 <img class="card-img-top" src="{{b.image}}" alt="{{b.name}}">
                 <div class="card-body">
@@ -25,10 +25,9 @@
                     {% if not inventory or inventory.quantity == 0 %}
                     <button class="btn btn-secondary" disabled>Hết hàng</button>
                     {% else %}
-                    <a href="#" onclick="addToCart({{b.id}}, '{{b.name}}', {{b.price}})" class="btn btn-danger">Đặt
+                    <a onclick="addToCart({{b.id}}, '{{b.name}}', {{b.price}})" class="btn btn-danger">Đặt
                         hàng</a>
                     {% endif %}
-                    <!--                        <a href="#" onclick="addToCart({{b.id}},'{{b.name}}',{{b.price}})" class="btn btn-danger">Đặt hàng</a>-->
                 </div>
             </div>
         </div>

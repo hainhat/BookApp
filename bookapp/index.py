@@ -9,7 +9,9 @@ import dao, utils
 from bookapp import app, admin, login, db
 from flask_login import login_user, logout_user, current_user, login_required
 import cloudinary.uploader
-from models import UserRoleEnum, Order, PaymentMethodEnum, OrderStatusEnum, OrderDetail
+
+from vnpay import VNPay
+from models import UserRoleEnum, Order, PaymentMethodEnum, OrderStatusEnum, OrderDetail, User
 from utils import roles_required
 from flask_apscheduler import APScheduler
 
@@ -64,13 +66,8 @@ def login_my_user():
         user = dao.auth_user(username=username, password=password)
         if user:
             login_user(user=user)
-            # Chuyển hướng về trang chủ theo role
-            if user.user_role == UserRoleEnum.MANAGER:
-                return redirect(url_for('import_page'))
-            elif user.user_role == UserRoleEnum.STAFF:
-                return redirect(url_for('sale_page'))
-            else:
-                return redirect(url_for('index'))
+            next = request.args.get("next")
+            return redirect(next if next else "/")
         else:
             err_msg = "Tài khoản hoặc mật khẩu không đúng!"
 
@@ -102,6 +99,20 @@ def register_user():
         else:
             err_msg = "Mật khẩu không khớp."
     return render_template("register.html", err_msg=err_msg)
+
+
+@app.route('/login-admin', methods=['post'])
+def process_login_admin():
+    username = request.form.get('username')
+    password = request.form.get('password')
+    user = dao.auth_user(username=username, password=password)
+
+    if user:
+        login_user(user)
+        return redirect("/admin")  # Cho phép tất cả user đăng nhập vào /admin
+    else:
+        flash("Tài khoản hoặc mật khẩu không đúng", "error")
+        return redirect("/admin")
 
 
 @app.route("/import", methods=['GET'])
@@ -158,7 +169,6 @@ def import_book(book_id):
 
 @app.route("/api/carts", methods=['post'])
 def add_to_cart():
-    print("Received request data:", request.json)  # Debug log
     cart = session.get("cart")
     if not cart:
         cart = {}
@@ -183,9 +193,14 @@ def add_to_cart():
                 "quantity": quantity
             }
         session['cart'] = cart
-        result = utils.count_cart(cart)
-        print("Sending response:", result)  # Debug log
-        return jsonify(result)
+
+        # Lấy số lượng tồn kho mới
+        inventory = dao.get_book_inventory(id)
+
+        return jsonify({
+            **utils.count_cart(cart),
+            "inventory_quantity": inventory.quantity if inventory else 0
+        })
 
     return jsonify({"error": "Không thể cập nhật số lượng"}), 400
 
@@ -233,9 +248,14 @@ def update_cart(product_id):
         cart[product_id]['quantity'] = new_quantity
         session['cart'] = cart
 
+        # Lấy số lượng tồn kho mới
+        inventory = dao.get_book_inventory(product_id)
+        inventory_quantity = inventory.quantity if inventory else 0
+
         return jsonify({
             "cart_stats": utils.count_cart(cart),
-            "product_total": cart[product_id]['price'] * new_quantity
+            "product_total": cart[product_id]['price'] * new_quantity,
+            "inventory_quantity": inventory_quantity
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 400
@@ -254,13 +274,8 @@ def order():
         payment_method = request.form.get('payment_method')
         delivery_address = request.form.get('delivery_address') if payment_method == 'ONLINE' else None
 
-        # Validate dữ liệu
-        # if payment_method == 'ONLINE' and not delivery_address:
-        #     flash("Vui lòng nhập địa chỉ giao hàng!", "error")
-        #     return redirect(url_for('order'))
-
         try:
-            # Tạo đơn hàng mới
+            # Tạo đơn hàng
             order = Order(
                 user_id=current_user.id,
                 payment_method=PaymentMethodEnum[payment_method],
@@ -268,13 +283,12 @@ def order():
                 ordered_at=datetime.now()
             )
 
-            # Set status và thời gian hết hạn dựa vào phương thức thanh toán
             if payment_method == 'CASH':
                 order.status = OrderStatusEnum.PENDING
                 rules = dao.get_store_rules()
                 order.expires_at = datetime.now() + timedelta(hours=rules.order_cancel_hours)
             else:
-                order.status = OrderStatusEnum.PAID
+                order.status = OrderStatusEnum.PENDING
 
             db.session.add(order)
             db.session.flush()  # Để lấy order.id
@@ -294,15 +308,28 @@ def order():
             order.total_amount = total_amount
             db.session.commit()
 
-            # Xóa giỏ hàng sau khi đặt hàng thành công
-            session.pop('cart', None)
+            # Nếu thanh toán online, tạo URL thanh toán VNPay
+            if payment_method == 'ONLINE':
+                # Khởi tạo VNPay với config
+                vnpay = VNPay()
 
-            # flash("Đặt hàng thành công!", "order_success")
+                # Tạo URL thanh toán
+                vnpay_url = vnpay.get_payment_url(
+                    order_id=order.id,
+                    total_amount=order.total_amount,
+                    order_desc=f"Thanh toan don hang #{order.id}"
+                )
+
+                # Chuyển hướng đến trang thanh toán VNPay
+                return redirect(vnpay_url)
+
+            # Thanh toán tiền mặt
+            session.pop('cart', None)  # Xóa giỏ hàng
             return redirect(url_for('order_details', order_id=order.id))
 
         except Exception as e:
             db.session.rollback()
-            # flash(f"Lỗi khi đặt hàng: {str(e)}", "order_error")
+            flash(f"Lỗi khi đặt hàng: {str(e)}", "error")
             return redirect(url_for('cart'))
 
     return render_template('order.html', hours=hours)
@@ -360,6 +387,94 @@ def list_orders():
     orders = Order.query.filter_by(user_id=current_user.id).order_by(Order.ordered_at.desc()).all()
     return render_template('list_orders.html', orders=orders)
 
+
+@app.route('/payment_return', methods=['GET'])
+def payment_return():
+    vnpay = VNPay()
+    vnp_response = request.args.to_dict()
+
+    if vnpay.verify_response(vnp_response):
+        vnp_ResponseCode = vnp_response.get('vnp_ResponseCode')
+        order_id = vnp_response.get('vnp_TxnRef')
+        amount = int(vnp_response.get('vnp_Amount', 0)) / 100
+        order_desc = vnp_response.get('vnp_OrderInfo')
+        vnp_TransactionNo = vnp_response.get('vnp_TransactionNo')
+        vnp_PayDate = vnp_response.get('vnp_PayDate')
+
+        order = Order.query.get(order_id)
+
+        if order:
+            # Đăng nhập lại user trước khi redirect
+            user = User.query.get(order.user_id)
+            if user:
+                login_user(user)
+
+            if vnp_ResponseCode == "00":
+                # Thanh toán thành công
+                order.status = OrderStatusEnum.PAID
+                db.session.commit()
+                session.pop('cart', None)
+                flash("Thanh toán thành công!", "success")
+            else:
+                # Thanh toán thất bại
+                order.status = OrderStatusEnum.CANCELLED
+                db.session.commit()
+                flash("Thanh toán thất bại!", "error")
+
+            return redirect(url_for('order_details', order_id=order_id))
+
+    flash("Invalid response from VNPay!", "error")
+    return redirect(url_for('cart'))
+
+
+@app.route("/sale", methods=['GET'])
+@login_required
+@roles_required([UserRoleEnum.MANAGER])
+def sale_page():
+    if current_user.user_role != UserRoleEnum.STAFF:
+        return render_template('staff/sale.html')
+
+    # books = dao.load_books_for_import()
+    # rules = dao.get_store_rules()
+
+
+@app.route("/cash_order", methods=['GET', 'POST'])
+@login_required
+@roles_required([UserRoleEnum.STAFF])
+def order_page():
+    order = None
+    error = None
+    success = None
+
+    if request.method == 'POST':
+        order_id = request.form.get('order_id')
+        action = request.form.get('action')
+
+        if order_id:
+            order = Order.query.get(order_id)
+
+            if not order:
+                error = "Không tìm thấy đơn hàng"
+            elif order.payment_method != PaymentMethodEnum.CASH:
+                error = "Chỉ xử lý đơn hàng thanh toán trực tiếp"
+            elif order.status != OrderStatusEnum.PENDING:
+                error = "Đơn hàng không hợp lệ hoặc đã được xử lý"
+            elif order.expires_at and order.expires_at < datetime.now():
+                error = "Đơn hàng đã hết hạn"
+            elif action == 'complete':
+                try:
+                    # Cập nhật trạng thái đơn hàng
+                    order.status = OrderStatusEnum.PAID
+                    db.session.commit()
+                    success = "Đã xử lý đơn hàng thành công!"
+                except Exception as e:
+                    db.session.rollback()
+                    error = "Lỗi khi xử lý đơn hàng"
+
+    return render_template('staff/cash_order.html',
+                           order=order,
+                           error=error,
+                           success=success)
 
 if __name__ == '__main__':
     with app.app_context():

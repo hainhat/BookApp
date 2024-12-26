@@ -11,25 +11,49 @@
                     <p class="lead mb-4">Mã đơn hàng: <strong>#{{ order.id }}</strong></p>
 
                     <!-- Trạng thái đơn hàng -->
-                    <div class="alert {% if order.status.name == 'PENDING' %}alert-warning{% else %}alert-success{% endif %}">
+                    <div class="alert {% if order.status.name == 'PENDING' %}alert-warning
+                  {% elif order.status.name == 'PAID' %}alert-success
+                  {% elif order.status.name == 'CANCELLED' %}alert-danger
+                  {% endif %}">
                         <h5 class="alert-heading">Trạng thái</h5>
                         <p class="mb-2">
                             {% if order.status.name == 'PENDING' %}
                             <span class="badge bg-warning text-dark">Chờ thanh toán</span>
                             {% elif order.status.name == 'PAID' %}
                             <span class="badge bg-success">Đã thanh toán</span>
+                            {% elif order.status.name == 'CANCELLED' %}
+                            <span class="badge bg-danger">Đã hủy</span>
                             {% endif %}
                         </p>
 
                         {% if order.payment_method.name == 'CASH' %}
                         <hr>
-                        <i class="bi bi-clock"></i>
+                        <i class="bi bi-cash"></i>
                         <p class="mb-0">Vui lòng đến nhận và thanh toán tại nhà sách (KDC Nhơn Đức, Nhà Bè)</p>
+                        {% if order.status.name == 'PENDING' %}
                         <p class="mb-0">Thời hạn: <strong>{{ order.expires_at.strftime('%H:%M %d/%m/%Y') }}</strong></p>
+                        {% endif %}
                         {% else %}
                         <hr>
-                        <i class="bi bi-truck"></i>
-                        <p class="mb-0">Đơn hàng sẽ được giao đến: <strong>{{ order.delivery_address }}</strong></p>
+                        <i class="bi bi-credit-card"></i>
+                        <p class="mb-0">Thanh toán online qua VNPay</p>
+                        {% if order.status.name == 'PENDING' %}
+                        <p class="mb-0 text-warning">
+                            <i class="bi bi-clock"></i> Đang chờ thanh toán...
+                        </p>
+                        {% elif order.status.name == 'PAID' %}
+                        <p class="mb-0 text-success">
+                            <i class="bi bi-check-circle"></i> Thành công!
+                        </p>
+                        <p class="mb-0 mt-2">
+                            <i class="bi bi-truck"></i> Đơn hàng sẽ được giao đến:
+                            <strong>{{ order.delivery_address }}</strong>
+                        </p>
+                        {% elif order.status.name == 'CANCELLED' %}
+                        <p class="mb-0 text-danger">
+                            <i class="bi bi-x-circle"></i> Thanh toán thất bại hoặc đã hủy!
+                        </p>
+                        {% endif %}
                         {% endif %}
                     </div>
 
