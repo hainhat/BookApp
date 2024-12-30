@@ -6,7 +6,7 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-body text-center">
-                    <i class="bi bi-check-circle text-success display-1"></i>
+                    <i class="fa-regular fa-circle-check fa-shake text-success display-1"></i>
                     <h2 class="mt-3">Đặt hàng thành công!</h2>
                     <p class="lead mb-4">Mã đơn hàng: <strong>#{{ order.id }}</strong></p>
 
@@ -18,7 +18,7 @@
                         <h5 class="alert-heading">Trạng thái</h5>
                         <p class="mb-2">
                             {% if order.status.name == 'PENDING' %}
-                            <span class="badge bg-warning text-dark">Chờ thanh toán</span>
+                            <span class="badge bg-warning text-black-50">Chờ thanh toán</span>
                             {% elif order.status.name == 'PAID' %}
                             <span class="badge bg-success">Đã thanh toán</span>
                             {% elif order.status.name == 'CANCELLED' %}
@@ -35,32 +35,19 @@
                         {% endif %}
                         {% else %}
                         <hr>
-                        <i class="bi bi-credit-card"></i>
+                        <i class="fa-regular fa-credit-card"></i>
                         <p class="mb-0">Thanh toán online qua VNPay</p>
-                        {% if order.status.name == 'PENDING' %}
-                        <p class="mb-0 text-warning">
-                            <i class="bi bi-clock"></i> Đang chờ thanh toán...
-                        </p>
-                        {% elif order.status.name == 'PAID' %}
-                        <p class="mb-0 text-success">
-                            <i class="bi bi-check-circle"></i> Thành công!
-                        </p>
                         <p class="mb-0 mt-2">
-                            <i class="bi bi-truck"></i> Đơn hàng sẽ được giao đến:
+                            <i class="fa-solid fa-truck-fast"></i> Đơn hàng sẽ được giao đến:
                             <strong>{{ order.delivery_address }}</strong>
                         </p>
-                        {% elif order.status.name == 'CANCELLED' %}
-                        <p class="mb-0 text-danger">
-                            <i class="bi bi-x-circle"></i> Thanh toán thất bại hoặc đã hủy!
-                        </p>
-                        {% endif %}
                         {% endif %}
                     </div>
 
                     <!-- Chi tiết đơn hàng -->
                     <div class="card mb-4">
                         <div class="card-header">
-                            <h5 class="mb-0">Chi tiết đơn hàng</h5>
+                            <h5 class="mb-0 text-start">Chi tiết đơn hàng</h5>
                         </div>
                         <div class="card-body">
                             <table class="table">

@@ -2,7 +2,6 @@ import enum
 
 from sqlalchemy import Column, String, Integer, Float, ForeignKey, Boolean, Enum, DateTime, CheckConstraint, Index, \
     UniqueConstraint
-
 from bookapp import db, app
 from sqlalchemy.orm import relationship
 from flask_login import UserMixin
@@ -42,7 +41,7 @@ class Book(db.Model):
     author_id = Column(Integer, ForeignKey(Author.id), nullable=True)
     order_details = relationship('OrderDetail', back_populates='book', lazy=True)
     receipt_details = relationship('ReceiptDetail', back_populates='book', lazy=True)
-    # import_history = relationship('ImportHistory', back_populates='book', lazy=True)
+    comments = relationship('Comment', backref='book', lazy=True)
     __table_args__ = (
         CheckConstraint('price >= 0', name='check_book_price'),
         Index('idx_category_author', 'category_id', 'author_id'),
@@ -70,6 +69,7 @@ class User(db.Model, UserMixin):
     avatar = Column(String(300),
                     default='https://res.cloudinary.com/dcncfkvwv/image/upload/v1733225278/default-avatar-icon-of-social-media-user-vector_ootybr.jpg')
     user_role = Column(Enum(UserRoleEnum), default=UserRoleEnum.USER)
+    comments = relationship('Comment', backref='user', lazy=True)
 
     def __str__(self):
         return self.name
@@ -166,14 +166,12 @@ class Receipt(db.Model):
     staff_id = Column(Integer, ForeignKey(User.id), nullable=False)
     created_at = Column(DateTime, default=datetime.now())
     total_amount = Column(Float, default=0)
-    payment_method = Column(Enum(PaymentMethodEnum))
     staff = relationship('User', lazy=True)
     receipt_details = relationship('ReceiptDetail', backref='receipt', lazy='dynamic')
     updated_at = Column(DateTime, default=datetime.now(), onupdate=datetime.now())
     deleted_at = Column(DateTime, nullable=True)
     __table_args__ = (
         Index('idx_created_at', 'created_at'),
-        Index('idx_payment_method', 'payment_method'),
     )
 
     def __str__(self):
@@ -235,6 +233,15 @@ class StoreRules(db.Model):
         return f"Store Rules (Last updated: {self.updated_at})"
 
 
+class Comment(db.Model):
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now())
+    content = Column(String(255), nullable=False)
+    user_id = Column(Integer, ForeignKey(User.id), nullable=False)
+    book_id = Column(Integer, ForeignKey(Book.id), nullable=False)
+
+
 # def create_db_diagram():
 #     # Create the directed graph
 #     graph = create_schema_graph(
@@ -254,54 +261,54 @@ if __name__ == "__main__":
     with app.app_context():
         db.create_all()
         # create_db_diagram()
-
-        c1 = Category(name="Truyện tranh")
-        c2 = Category(name="Tiểu thuyết")
-        c3 = Category(name="Truyện kinh dị")
-        db.session.add_all([c1, c2, c3])
-
-        a1 = Author(name="Fujiko Fujio")
-        a2 = Author(name="Nguyễn Nhật Ánh")
-        a3 = Author(name="Lê Hữu Nam")
-        db.session.add_all([a1, a2, a3])
-
-        import json
-
-        with open('data/books.json', encoding='utf-8') as f:
-            books = json.load(f)
-            for b in books:
-                book = Book(**b)
-                db.session.add(book)
-
-        import hashlib
-
-        password = str(hashlib.md5("123".encode('utf-8')).hexdigest())
-
-        u1 = User(name='Nhat User', username='user', password=password, user_role=UserRoleEnum.USER)
-        u2 = User(name='Nhat Admin', username='admin', password=password, user_role=UserRoleEnum.ADMIN)
-        u3 = User(name='Nhat Staff', username='staff', password=password, user_role=UserRoleEnum.STAFF)
-        u4 = User(name='Nhat Manager', username='manager', password=password, user_role=UserRoleEnum.MANAGER)
-        db.session.add_all([u1, u2, u3, u4])
-        db.session.commit()
-
-        if not StoreRules.query.first():
-            rules = StoreRules(
-                min_import_quantity=150,  # Số lượng nhập tối thiểu
-                min_stock_before_import=300,  # Số lượng tồn tối thiểu trước khi nhập
-                order_cancel_hours=48,  # Thời gian huỷ đơn
-                updated_by=2  # ID của admin
-            )
-            db.session.add(rules)
-
-        books = Book.query.all()
-        for book in books:
-            # Kiểm tra xem sách đã có inventory chưa
-            if not BookInventory.query.filter_by(book_id=book.id).first():
-                # Tạo inventory mới với số lượng mặc định là 100
-                inventory = BookInventory(
-                    book_id=book.id,
-                    quantity=100,
-                    imported_at=datetime.now()
-                )
-                db.session.add(inventory)
-        db.session.commit()
+        #
+        # c1 = Category(name="Truyện tranh")
+        # c2 = Category(name="Tiểu thuyết")
+        # c3 = Category(name="Truyện kinh dị")
+        # db.session.add_all([c1, c2, c3])
+        #
+        # a1 = Author(name="Fujiko Fujio")
+        # a2 = Author(name="Nguyễn Nhật Ánh")
+        # a3 = Author(name="Lê Hữu Nam")
+        # db.session.add_all([a1, a2, a3])
+        #
+        # import json
+        #
+        # with open('data/books.json', encoding='utf-8') as f:
+        #     books = json.load(f)
+        #     for b in books:
+        #         book = Book(**b)
+        #         db.session.add(book)
+        #
+        # import hashlib
+        #
+        # password = str(hashlib.md5("123".encode('utf-8')).hexdigest())
+        #
+        # u1 = User(name='Nhat User', username='user', password=password, user_role=UserRoleEnum.USER)
+        # u2 = User(name='Nhat Admin', username='admin', password=password, user_role=UserRoleEnum.ADMIN)
+        # u3 = User(name='Nhat Staff', username='staff', password=password, user_role=UserRoleEnum.STAFF)
+        # u4 = User(name='Nhat Manager', username='manager', password=password, user_role=UserRoleEnum.MANAGER)
+        # db.session.add_all([u1, u2, u3, u4])
+        # db.session.commit()
+        #
+        # if not StoreRules.query.first():
+        #     rules = StoreRules(
+        #         min_import_quantity=150,  # Số lượng nhập tối thiểu
+        #         min_stock_before_import=300,  # Số lượng tồn tối thiểu trước khi nhập
+        #         order_cancel_hours=48,  # Thời gian huỷ đơn
+        #         updated_by=2  # ID của admin
+        #     )
+        #     db.session.add(rules)
+        #
+        # books = Book.query.all()
+        # for book in books:
+        #     # Kiểm tra xem sách đã có inventory chưa
+        #     if not BookInventory.query.filter_by(book_id=book.id).first():
+        #         # Tạo inventory mới với số lượng mặc định là 100
+        #         inventory = BookInventory(
+        #             book_id=book.id,
+        #             quantity=100,
+        #             imported_at=datetime.now()
+        #         )
+        #         db.session.add(inventory)
+        # db.session.commit()

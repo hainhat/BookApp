@@ -3,5 +3,12 @@
 }
 
 body {
-    background-color: #EEF5FF
+    background: linear-gradient(to bottom, #E8F1F5, #B8D8E3)
+}
+
+.plum-blossom {
+    position: absolute;
+    padding: 10px;
+    pointer-events: none;
+    z-index: 999;
 }

@@ -1,0 +1,103 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Xử lý đơn hàng online{% endblock %}
+
+{% block content %}
+<div class="container my-4">
+    <h1 class="text-center text-success mb-4">Xử lý đơn hàng online</h1>
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <!-- Form tìm kiếm đơn hàng -->
+            <form method="post" class="mb-4">
+                <div class="row g-3 align-items-center">
+                    <div class="col-auto">
+                        <label for="order_id" class="col-form-label text-dark">Mã đơn:</label>
+                    </div>
+                    <div class="col-auto">
+                        <input type="number" id="order_id" name="order_id" class="form-control"
+                               required min="1" placeholder="Nhập mã đơn hàng...">
+                    </div>
+                    <div class="col-auto">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search"></i> Tìm kiếm
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <!-- Hiển thị thông tin đơn hàng -->
+            {% if order %}
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Mã đơn #{{ order.id }}</h5>
+                        <span class="badge {% if order.status.name == 'PENDING' %}bg-warning
+                                                  {% elif order.status.name == 'PAID' %}bg-success
+                                                  {% elif order.status.name == 'CANCELLED' %}bg-danger
+                                                  {% else %}bg-secondary{% endif %}">
+                                    {% if order.status.name == 'PENDING' %}
+                                        Chờ thanh toán
+                                    {% elif order.status.name == 'PAID' %}
+                                        Đã thanh toán
+                                    {% elif order.status.name == 'CANCELLED' %}
+                                        Đã hủy
+                                    {% else %}
+                                        {{ order.status.name }}
+                                    {% endif %}
+                                </span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <p class="mb-1"><strong>Khách hàng:</strong> {{ order.user.name }}</p>
+                        <p class="mb-1"><strong>Ngày đặt:</strong> {{ order.ordered_at.strftime('%d/%m/%Y
+                            %H:%M') }}</p>
+                        {% if order.expires_at %}
+                        <p class="mb-1"><strong>Hạn thanh toán:</strong> {{ order.expires_at.strftime('%d/%m/%Y
+                            %H:%M') }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                            <tr>
+                                <th>Sách</th>
+                                <th class="text-center">Số lượng</th>
+                                <th class="text-end">Đơn giá</th>
+                                <th class="text-end">Thành tiền</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for detail in order.order_details %}
+                            <tr>
+                                <td>{{ detail.book.name }}</td>
+                                <td class="text-center">{{ detail.quantity }}</td>
+                                <td class="text-end">{{ "{:,.0f}".format(detail.unit_price) }} VND</td>
+                                <td class="text-end">{{ "{:,.0f}".format(detail.quantity * detail.unit_price) }} VND
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            <tr class="table-info">
+                                <td colspan="3" class="text-end"><strong>Tổng cộng:</strong></td>
+                                <td class="text-end"><strong>{{ "{:,.0f}".format(order.total_amount) }} VND</strong></td>
+                            </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    {% if order.status.name == 'PENDING' and order.payment_method.name=='CASH'%}
+                    <form method="post" class="mt-3">
+                        <input type="hidden" name="order_id" value="{{ order.id }}">
+                        <input type="hidden" name="action" value="complete">
+                        <button type="submit" class="btn btn-success">
+                            <i class="fa-regular fa-circle-check"></i> Xác nhận thanh toán
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+</div>
+{% endblock %}

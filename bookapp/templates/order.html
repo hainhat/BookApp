@@ -21,43 +21,47 @@
                         </tr>
                         {% endfor %}
                         <tr class="table-info">
-                            <td colspan="2" class="fw-bold">Tổng cộng:</td>
+                            <td colspan="2" class="fw-bold text-end">Tổng cộng:</td>
                             <td class="text-end fw-bold">{{ "{:,.0f}".format(stats_cart.total_amount) }} VND</td>
                         </tr>
                         </tbody>
                     </table>
 
-                    <!-- Form thanh toán -->
-                    <form method="post" action="{{ url_for('order') }}" id="paymentForm">
+                    <form method="post" action="{{ url_for('order') }}">
                         <div class="mb-4">
                             <h5>Chọn phương thức thanh toán:</h5>
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="radio" name="payment_method"
                                        id="cashPayment" value="CASH" checked
-                                       onclick="toggleAddress(false)">
+                                       onclick="toggleAddressInput(false)">
                                 <label class="form-check-label" for="cashPayment">
-                                    <i class="bi bi-cash-coin"></i> Thanh toán trực tiếp tại nhà sách (KDC Nhơn Đức, Nhà Bè)
+                                    <i class="bi bi-cash-coin"></i> Thanh toán trực tiếp tại nhà sách
+                                    (<i class="bi bi-geo-alt-fill"></i> KDC Nhơn Đức, Nhà Bè)
                                     <small class="text-muted d-block">
-                                        Vui lòng đến nhận và thanh toán trong vòng {{hours}} tiếng
+                                        <i class="bi bi-clock-fill"></i> Vui lòng đến nhận sách trong vòng {{hours}}
+                                        tiếng
                                     </small>
                                 </label>
                             </div>
-                            <div class="form-check">
+                            <div class="form-check mb-4">
                                 <input class="form-check-input" type="radio" name="payment_method"
                                        id="onlinePayment" value="ONLINE"
-                                       onclick="toggleAddress(true)">
+                                       onclick="toggleAddressInput(true)">
                                 <label class="form-check-label" for="onlinePayment">
                                     <i class="bi bi-credit-card-2-back"></i> Thanh toán online (miễn phí giao hàng)
                                 </label>
                             </div>
-                        </div>
 
-                        <!-- Địa chỉ giao hàng (ẩn/hiện) -->
-                        <div id="addressSection" style="display: none;" class="mb-4">
-                            <label for="delivery_address" class="form-label">Địa chỉ giao hàng:</label>
-                            <textarea class="form-control" id="delivery_address"
-                                      name="delivery_address" rows="3"
-                                      placeholder="Nhập địa chỉ giao hàng của bạn" ></textarea>
+                            <!-- Địa chỉ giao hàng (luôn hiển thị) -->
+                            <div class="mb-4">
+                                <label for="delivery_address" class="form-label">
+                                    <i class="fa-solid fa-location-crosshairs"></i> Địa chỉ giao hàng:
+                                </label>
+                                <textarea class="form-control" id="delivery_address"
+                                          name="delivery_address" rows="3"
+                                          placeholder="Nhập địa chỉ giao hàng"
+                                          disabled required></textarea>
+                            </div>
                         </div>
 
                         <!-- Nút điều hướng -->
@@ -66,7 +70,7 @@
                                 <i class="bi bi-arrow-left"></i> Quay lại giỏ hàng
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-check-circle"></i> Xác nhận đặt hàng
+                                <i class="bi bi-check-circle-fill"></i> Xác nhận đặt hàng
                             </button>
                         </div>
                     </form>
@@ -77,26 +81,37 @@
 </div>
 
 <script>
-    function toggleAddress(show) {
-        const addressSection = document.getElementById('addressSection');
+    function toggleAddressInput(enable) {
         const addressInput = document.getElementById('delivery_address');
-
-        addressSection.style.display = show ? 'block' : 'none';
-        addressInput.required = show;
-        if (!show) addressInput.value = '';
+        addressInput.disabled = !enable;
+        if (!enable) addressInput.value = '';
     }
+    // function toggleAddressInput(enable) {
+    //     const addressInput = document.getElementById('delivery_address');
+    //     const addressHelp = document.getElementById('addressHelp');
+    //
+    //     if (enable) {
+    //         addressInput.disabled = false;
+    //         addressInput.required = true;
+    //         addressInput.focus();
+    //     } else {
+    //         addressInput.disabled = true;
+    //         addressInput.required = false;
+    //         addressInput.value = '';
+    //     }
+    // }
 
     // Validate form trước khi submit
-    document.getElementById('paymentForm').onsubmit = function (e) {
-        const isOnline = document.getElementById('onlinePayment').checked;
-        const address = document.getElementById('delivery_address').value;
-
-        if (isOnline && !address.trim()) {
-            e.preventDefault();
-            alert('Vui lòng nhập địa chỉ giao hàng');
-            return false;
-        }
-        return true;
-    }
+    // document.getElementById('paymentForm').onsubmit = function (e) {
+    //     const isOnline = document.getElementById('onlinePayment').checked;
+    //     const address = document.getElementById('delivery_address').value;
+    //
+    //     if (isOnline && !address.trim()) {
+    //         e.preventDefault();
+    //         alert('Vui lòng nhập địa chỉ giao hàng');
+    //         return false;
+    //     }
+    //     return true;
+    // }
 </script>
 {% endblock %}

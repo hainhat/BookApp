@@ -1,9 +1,9 @@
+from datetime import datetime
 from flask import redirect, request, url_for, jsonify, render_template, flash
 from flask_admin import Admin, BaseView, expose, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
 from flask_login import current_user, logout_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
-
 from bookapp import app, db, dao
 from bookapp.utils import roles_required
 from models import Book, Author, Category, UserRoleEnum, StoreRules
@@ -40,7 +40,17 @@ class MyBookView(MyModelView):
 class StatsView(MyBaseView):
     @expose('/')
     def index(self):
-        return self.render("admin/stats.html")
+        month = request.args.get('month', datetime.now().month, type=int)
+        year = request.args.get('year', datetime.now().year, type=int)
+
+        revenue_stats = dao.stats_revenue_by_category(month=month, year=year)
+        frequency_stats = dao.stats_book_frequency(month=month, year=year)
+
+        return self.render('admin/stats.html',
+                           revenue_stats=revenue_stats,
+                           frequency_stats=frequency_stats,
+                           current_month=month,
+                           current_year=year)
 
 
 class LogoutView(MyBaseView):
@@ -75,7 +85,6 @@ class RulesView(MyModelView):
 
 
 class MyAdminIndexView(AdminIndexView):
-
     @expose('/')
     def index(self):
         return self.render('admin/index.html', UserRoleEnum=UserRoleEnum)

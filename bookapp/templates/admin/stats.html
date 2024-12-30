@@ -1,4 +1,114 @@
 {% extends 'admin/master.html' %}
-{% block body %}
 
-{% endblock%}
+{% block body %}
+<h1 class="text-center text-success">THỐNG KÊ BÁO CÁO</h1>
+
+<!-- Form chọn tháng năm -->
+<form method="get" class="mb-4">
+    <div class="row">
+        <div class="col-md-3">
+            <div class="form-group">
+                <label for="month">Tháng:</label>
+                <select name="month" id="month" class="form-control" onchange="this.form.submit()">
+                    {% for i in range(1, 13) %}
+                    <option value="{{ i }}" {% if i== current_month %}selected{% endif %}>{{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="form-group">
+                <label for="year">Năm:</label>
+                <select name="year" id="year" class="form-control" onchange="this.form.submit()">
+                    {% for i in range(current_year-2, current_year+1) %}
+                    <option value="{{ i }}" {% if i == current_year %}selected{% endif %}>{{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+    </div>
+</form>
+<div class="row mb-2">
+    <div class="col-md-12 text-end">
+        <a href="{{ url_for('export_excel', month=current_month, year=current_year) }}" class="btn btn-primary">
+            <i class="fa fa-file-excel"></i> Xuất Excel
+        </a>
+    </div>
+</div>
+<!-- Thống kê doanh thu theo thể loại -->
+<div class="row mb-5">
+    <div class="col-md-5">
+        <h3>Doanh thu theo thể loại</h3>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Thể loại</th>
+                    <th class="text-end">Doanh thu</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for category, revenue in revenue_stats %}
+                <tr>
+                    <td>{{ category }}</td>
+                    <td class="text-end">{{ "{:,.0f}".format(revenue) }} VND</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="col-md-7">
+        <canvas id="revenueChart"></canvas>
+    </div>
+</div>
+
+<!-- Thống kê sách bán chạy -->
+<div class="row">
+    <div class="col-md-5">
+        <h3>Top 5 sách bán chạy nhất</h3>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Tên sách</th>
+                    <th class="text-end">Số lượng bán</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for book, quantity in frequency_stats %}
+                <tr>
+                    <td>{{ book }}</td>
+                    <td class="text-end">{{ quantity }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="col-md-7">
+        <canvas id="frequencyChart"></canvas>
+    </div>
+</div>
+
+<script>
+    let revenueLabels = [];
+    let revenueData = [];
+
+    {% for category, revenue in revenue_stats %}
+        revenueLabels.push('{{ category }}');
+        revenueData.push({{ revenue }});
+    {% endfor %}
+
+    let frequencyLabels = [];
+    let frequencyData = [];
+
+    {% for book, quantity in frequency_stats %}
+        frequencyLabels.push('{{ book }}');
+        frequencyData.push({{ quantity }});
+    {% endfor %}
+
+    window.onload = function() {
+        drawChart('revenueChart', 'pie', revenueLabels, revenueData, 'Doanh thu (VND)');
+        drawChart('frequencyChart', 'bar', frequencyLabels, frequencyData, 'Số lượng bán');
+    }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='js/stats.js') }}"></script>
+{% endblock %}

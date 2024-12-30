@@ -1,19 +1,19 @@
 import math
 from datetime import datetime, timedelta
+from io import BytesIO
 
+import pandas as pd
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-
-from flask import render_template, request, redirect, url_for, flash, jsonify, session, abort
+from flask import render_template, request, redirect, url_for, flash, jsonify, session, abort, send_file
 import dao, utils
 from bookapp import app, admin, login, db
 from flask_login import login_user, logout_user, current_user, login_required
 import cloudinary.uploader
-
-from vnpay import VNPay
 from models import UserRoleEnum, Order, PaymentMethodEnum, OrderStatusEnum, OrderDetail, User
 from utils import roles_required
 from flask_apscheduler import APScheduler
+from vnpay import VNPay
 
 scheduler = APScheduler()
 
@@ -33,7 +33,8 @@ def index():
 @app.route("/books/<int:id>")
 def book_details(id):
     book = dao.load_book_by_id(id)
-    return render_template("book_details.html", book=book)
+    comments = dao.get_comments_by_book(id)
+    return render_template("book_details.html", book=book, comments=comments)
 
 
 @app.context_processor
@@ -135,34 +136,20 @@ def import_book(book_id):
     if request.method != 'POST':
         return redirect(url_for('import_page'))
 
-    try:
-        quantity = int(request.form.get('quantity', 0))
-        import_price = float(request.form.get('import_price', 0))
+    quantity = int(request.form.get('quantity', 0))
 
-        # Kiểm tra quy định
-        rules = dao.get_store_rules()
-        if quantity < rules.min_import_quantity:
-            flash(f"Số lượng nhập tối thiểu là {rules.min_import_quantity}", "error")
-            return redirect(url_for('import_page'))
+    # Kiểm tra quy định
+    rules = dao.get_store_rules()
+    if quantity < rules.min_import_quantity:
+        return redirect(url_for('import_page'))
 
         # Kiểm tra tồn kho
-        inventory = dao.get_book_inventory(book_id)
-        if inventory and inventory.quantity > rules.min_stock_before_import:
-            flash(f"Số lượng tồn kho vẫn còn trên {rules.min_stock_before_import}", "error")
-            return redirect(url_for('import_page'))
+    inventory = dao.get_book_inventory(book_id)
+    if inventory and inventory.quantity > rules.min_stock_before_import:
+        return redirect(url_for('import_page'))
 
         # Thực hiện nhập sách
-        dao.create_import(
-            manager_id=current_user.id,
-            book_id=book_id,
-            quantity=quantity,
-            import_price=import_price
-        )
-
-        flash("Nhập sách thành công", "import_success")
-
-    except Exception as ex:
-        flash(f"Lỗi: {str(ex)}", "import_error")
+    dao.create_import(manager_id=current_user.id, book_id=book_id, quantity=quantity)
 
     return redirect(url_for('import_page'))
 
@@ -201,7 +188,6 @@ def add_to_cart():
             **utils.count_cart(cart),
             "inventory_quantity": inventory.quantity if inventory else 0
         })
-
     return jsonify({"error": "Không thể cập nhật số lượng"}), 400
 
 
@@ -261,6 +247,7 @@ def update_cart(product_id):
         return jsonify({"error": str(e)}), 400
 
 
+# Đặt hàng online
 @app.route("/order", methods=['GET', 'POST'])
 @login_required
 def order():
@@ -329,13 +316,12 @@ def order():
 
         except Exception as e:
             db.session.rollback()
-            flash(f"Lỗi khi đặt hàng: {str(e)}", "error")
             return redirect(url_for('cart'))
 
     return render_template('order.html', hours=hours)
 
 
-# Route hiển thị trang thành công
+# Chi tiết đơn hàng
 @app.route('/order_details/<int:order_id>')
 @login_required
 def order_details(order_id):
@@ -348,7 +334,7 @@ def order_details(order_id):
     return render_template('order_details.html', order=order, hours=hours)
 
 
-# Scheduled task để hủy đơn hàng quá hạn
+# Schedule tự động hủy đơn hàng quá hạn
 def init_scheduler(app):
     scheduler = BackgroundScheduler()
 
@@ -358,17 +344,14 @@ def init_scheduler(app):
             expired_orders = Order.query.filter(
                 Order.status == OrderStatusEnum.PENDING,
                 Order.payment_method == PaymentMethodEnum.CASH,
-                Order.expires_at < now
-            ).all()
+                Order.expires_at < now).all()
 
             for order in expired_orders:
                 order.status = OrderStatusEnum.CANCELLED
 
             if expired_orders:
                 db.session.commit()
-                print(f"Đã hủy {len(expired_orders)} đơn hàng quá hạn")
 
-    # Sử dụng add_job thay vì task
     scheduler.add_job(
         func=check_expired_orders,
         trigger=IntervalTrigger(hours=1),
@@ -376,7 +359,6 @@ def init_scheduler(app):
         name='Check and cancel expired orders',
         replace_existing=True
     )
-
     scheduler.start()
     return scheduler
 
@@ -408,44 +390,160 @@ def payment_return():
             user = User.query.get(order.user_id)
             if user:
                 login_user(user)
-
             if vnp_ResponseCode == "00":
                 # Thanh toán thành công
                 order.status = OrderStatusEnum.PAID
                 db.session.commit()
                 session.pop('cart', None)
-                flash("Thanh toán thành công!", "success")
             else:
                 # Thanh toán thất bại
                 order.status = OrderStatusEnum.CANCELLED
                 db.session.commit()
-                flash("Thanh toán thất bại!", "error")
 
             return redirect(url_for('order_details', order_id=order_id))
 
-    flash("Invalid response from VNPay!", "error")
     return redirect(url_for('cart'))
 
 
 @app.route("/sale", methods=['GET'])
 @login_required
-@roles_required([UserRoleEnum.MANAGER])
+@roles_required([UserRoleEnum.STAFF])
 def sale_page():
-    if current_user.user_role != UserRoleEnum.STAFF:
-        return render_template('staff/sale.html')
-
-    # books = dao.load_books_for_import()
-    # rules = dao.get_store_rules()
+    return render_template('staff/sale.html')
 
 
-@app.route("/cash_order", methods=['GET', 'POST'])
+@app.route("/api/books/search")
 @login_required
 @roles_required([UserRoleEnum.STAFF])
-def order_page():
-    order = None
-    error = None
-    success = None
+def search_books():
+    query = request.args.get('q')
+    print("Search query:", query)  # Thêm log để debug
 
+    if not query:
+        return jsonify([])
+
+    books = dao.search_books(query)
+    result = [{
+        'id': book[0].id,
+        'name': book[0].name,
+        'price': book[0].price,
+        'inventory': book[1].quantity if book[1] else 0
+    } for book in books]
+
+    print("Search results:", result)  # Thêm log để debug
+    return jsonify(result)
+
+
+@app.route("/api/receipt/add_book", methods=['POST'])
+@login_required
+@roles_required([UserRoleEnum.STAFF])
+def add_to_receipt():
+    data = request.json
+    book_id = str(data.get('id'))
+    quantity = data.get('quantity', 1)
+
+    # Kiểm tra tồn kho
+    inventory = dao.get_book_inventory(book_id)
+    if not inventory or inventory.quantity < quantity:
+        return jsonify({"error": "Không đủ số lượng sách trong kho"}), 400
+
+    # Thêm vào receipt_session
+    cart = session.get('cart', {})
+    if book_id in cart:
+        cart[book_id]['quantity'] += quantity
+    else:
+        cart[book_id] = {
+            'id': int(book_id),  # Chuyển sang int vì create_receipt cần id dạng số
+            'name': data.get('name'),
+            'price': float(data.get('price')),
+            'quantity': quantity
+        }
+    session['cart'] = cart
+
+    # Cập nhật số lượng tồn kho tạm thời
+    if dao.update_inventory(book_id, quantity):
+        return jsonify({
+            'cart': cart,
+            'inventory_quantity': inventory.quantity - quantity
+        })
+
+
+@app.route("/api/receipt/update_quantity", methods=['PUT'])
+@login_required
+@roles_required([UserRoleEnum.STAFF])
+def update_receipt_quantity():
+    data = request.json
+    book_id = str(data.get('id'))
+    new_quantity = int(data.get('quantity'))
+
+    cart = session.get('cart', {})
+    if book_id not in cart:
+        return jsonify({"error": "Sách không tồn tại trong hóa đơn"}), 400
+
+    current_quantity = cart[book_id]['quantity']
+    if new_quantity > current_quantity:
+        increase = new_quantity - current_quantity
+        inventory = dao.get_book_inventory(book_id)
+        if not inventory or inventory.quantity < increase:
+            return jsonify({"error": "Không đủ số lượng sách trong kho"}), 400
+        dao.update_inventory(book_id, increase)
+    else:
+        decrease = current_quantity - new_quantity
+        dao.restore_inventory(book_id, decrease)
+
+    cart[book_id]['quantity'] = new_quantity
+    session['cart'] = cart
+
+    inventory = dao.get_book_inventory(book_id)
+    return jsonify({
+        'cart': cart,
+        'inventory_quantity': inventory.quantity if inventory else 0
+    })
+
+
+@app.route("/api/receipt/remove_book", methods=['DELETE'])
+@login_required
+@roles_required([UserRoleEnum.STAFF])
+def remove_from_receipt():
+    book_id = request.args.get('id')
+    cart = session.get('cart', {})
+
+    if book_id in cart:
+        quantity = cart[book_id]['quantity']
+        dao.restore_inventory(book_id, quantity)
+        del cart[book_id]
+        session['cart'] = cart
+
+    return jsonify({'cart': cart})
+
+
+@app.route("/api/receipt/complete", methods=['POST'])
+@login_required
+@roles_required([UserRoleEnum.STAFF])
+def complete_receipt():
+    cart = session.get('cart')
+    if not cart:
+        return jsonify({"error": "Không có sách trong hóa đơn"}), 400
+
+    try:
+        # Sử dụng hàm create_receipt có sẵn
+        receipt = dao.create_receipt(current_user.id, cart)
+        session.pop('cart', None)  # Xóa cart sau khi tạo receipt thành công
+
+        return jsonify({
+            'success': True,
+            'receipt_id': receipt.id,
+            'total_amount': receipt.total_amount
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/online_order", methods=['GET', 'POST'])
+@login_required
+@roles_required([UserRoleEnum.STAFF])
+def online_order_page():
+    order = None
     if request.method == 'POST':
         order_id = request.form.get('order_id')
         action = request.form.get('action')
@@ -453,28 +551,52 @@ def order_page():
         if order_id:
             order = Order.query.get(order_id)
 
-            if not order:
-                error = "Không tìm thấy đơn hàng"
-            elif order.payment_method != PaymentMethodEnum.CASH:
-                error = "Chỉ xử lý đơn hàng thanh toán trực tiếp"
-            elif order.status != OrderStatusEnum.PENDING:
-                error = "Đơn hàng không hợp lệ hoặc đã được xử lý"
-            elif order.expires_at and order.expires_at < datetime.now():
-                error = "Đơn hàng đã hết hạn"
-            elif action == 'complete':
+            if action == 'complete':
                 try:
                     # Cập nhật trạng thái đơn hàng
                     order.status = OrderStatusEnum.PAID
                     db.session.commit()
-                    success = "Đã xử lý đơn hàng thành công!"
                 except Exception as e:
                     db.session.rollback()
-                    error = "Lỗi khi xử lý đơn hàng"
 
-    return render_template('staff/cash_order.html',
-                           order=order,
-                           error=error,
-                           success=success)
+    return render_template('staff/online_order.html', order=order)
+
+
+@app.route('/api/books/<int:id>/comments', methods=['post'])
+@login_required
+def add_comment(id):
+    data = request.json
+    c = dao.add_comment(content=data.get('content'), book_id=id)
+
+    return jsonify({'id': c.id, 'content': c.content, 'book_id': c.book_id,
+                    'user': {
+                        'name': c.user.name,
+                        'avatar': c.user.avatar
+                    },
+                    'created_at': c.created_at.isoformat()
+                    })
+
+
+@app.route('/export_excel')
+def export_excel():
+    month = request.args.get('month', type=int, default=1)  # Thêm giá trị mặc định nếu không có
+    year = request.args.get('year', type=int, default=2024)  # Thêm giá trị mặc định nếu không có
+
+    revenue_stats = dao.stats_revenue_by_category(month, year)
+    frequency_stats = dao.stats_book_frequency(month, year)
+
+    revenue_df = pd.DataFrame(revenue_stats, columns=['Thể loại', 'Doanh thu'])
+    frequency_df = pd.DataFrame(frequency_stats, columns=['Tên sách', 'Số lượng bán'])
+
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        revenue_df.to_excel(writer, sheet_name='Doanh thu', index=False)
+        frequency_df.to_excel(writer, sheet_name='Sách bán chạy', index=False)
+
+    output.seek(0)
+    return send_file(output, as_attachment=True, download_name=f"thong_ke_{month}_{year}.xlsx",
+                     mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
 
 if __name__ == '__main__':
     with app.app_context():

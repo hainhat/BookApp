@@ -1,157 +1,62 @@
 {% extends "layout/base.html" %}
 {% block title %}Giỏ hàng{% endblock %}
+
 {% block content %}
 <div class="container my-5">
-    <h3 class="text-info mb-4 text-center">Giỏ hàng</h3>
+    <h1 class="text-danger mb-4 text-center">Giỏ hàng</h1>
     {% if 'cart' in session and session['cart']|length > 0 %}
     <div class="table-container">
         <table class="table table-bordered table-hover align-middle">
             <thead class="table-light">
             <tr>
-                <th>ID</th>
-                <th>Tên sách</th>
-                <th>Đơn giá</th>
-                <th>Số lượng</th>
-                <th>Thành tiền</th>
-                <th class="text-center">Xoá</th>
+                <th style="width: 40%">Tên sách</th>
+                <th style="width: 35%" class="text-end">Đơn giá</th>
+                <th style="width: 15%" class="text-center">Số lượng</th>
+                <th style="width: 10%" class="text-center">Xoá</th>
             </tr>
             </thead>
-            <tbody>
+            <tbody class="table-light">
             {% for c in session['cart'].values() %}
-            {% set inventory = get_book_inventory(c.id) %}
-            <tr data-id="{{ c.id }}" data-price="{{ c.price }}">
-                <td>{{ c.id }}</td>
+            <tr id="product{{ c.id }}">
                 <td>{{ c.name }}</td>
-                <td class="product-price">{{ "{:,.0f}".format(c.price) }} VND</td>
-                <td style="width: 150px;">
-                    {% set inventory = get_book_inventory(c.id) %}
-                    <input type="number" min="1" value="{{ c.quantity }}"
-                           max="{{ (inventory.quantity + c.quantity) if inventory else c.quantity }}"
-                           class="form-control text-center quantity-input"
-                           onchange="updateQuantity('{{ c.id }}', this.value, {{ c.price }})">
-                    <small class="text-muted">Còn lại: <span class="inventory-quantity">{{ inventory.quantity if inventory else 0 }}</span></small>
-                </td>
-                <td class="product-total">{{ "{:,.0f}".format(c.price * c.quantity) }} VND</td>
+                <td class="text-end">{{ "{:,.0f}".format(c.price) }} VND</td>
                 <td class="text-center">
-                    <button class="btn btn-danger btn-sm" onclick="deleteCartItem('{{ c.id }}')">
-                        <i class="bi bi-x-lg"></i>
+                    <input type="number" min="1" value="{{ c.quantity }}"
+                           class="form-control text-center w-50 mx-auto"
+                           onchange="updateCart('{{ c.id }}', this.value)">
+                    {% set inventory = get_book_inventory(c.id) %}
+                    <small class="text-muted d-block mt-1">Còn lại: <span class="inventory-quantity">{{ inventory.quantity if inventory else 0 }}</span></small>
+                </td>
+                <td class="text-center">
+                    <button class="btn btn-danger btn-sm" onclick="deleteCart('{{ c.id }}')">
+                        <i class="bi bi-x"></i>
                     </button>
                 </td>
             </tr>
             {% endfor %}
             </tbody>
         </table>
-
-        <div class="card mt-3">
-            <div class="card-body">
-                <div class="d-flex flex-column">
-                    <h5 class="mb-2">Tổng số lượng: <span id="total-quantity" class="text-primary">{{ stats_cart.total_quantity }}</span>
-                    </h5>
-                    <h5>Tổng tiền: <span id="total-amount" class="text-danger">{{ "{:,.0f}".format(stats_cart.total_amount) }}</span>
-                        VND</h5>
-                </div>
-            </div>
-        </div>
-
+        <h5>Tổng số lượng: <span class="class-counter text-primary">{{ stats_cart.total_quantity }}</span></h5>
+        <h5>Tổng tiền: <span id="total-amount"
+                             class="text-danger">{{ "{:,.0f}".format(stats_cart.total_amount) }} VND</span></h5>
         <div class="d-flex justify-content-between align-items-center mt-4">
             <a href="/" class="btn btn-secondary">
                 <i class="bi bi-caret-left-fill"></i> Tiếp tục mua
             </a>
-            {%if current_user.is_authenticated%}
-            <button class="btn btn-success" onclick="window.location.href='{{ url_for('order') }}'">
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('order') }}" class="btn btn-success">
                 <i class="bi bi-bag-check-fill"></i> Thanh toán
-            </button>
-            {%else%}
+            </a>
+            {% else %}
             <div><a href="/login?next=/cart">Đăng nhập</a> để thanh toán</div>
-            {%endif%}
+            {% endif %}
         </div>
     </div>
     {% else %}
     <div class="alert alert-info text-center">Không có sản phẩm nào</div>
     {% endif %}
 </div>
-
 {% endblock %}
 {% block scripts %}
-<script>
-    // Thêm validation cho input số lượng
-    document.querySelectorAll('.quantity-input').forEach(input => {
-        input.addEventListener('input', function () {
-            const value = parseInt(this.value);
-            const min = parseInt(this.min);
-            const max = parseInt(this.max);
-
-            if (value < min) this.value = min;
-            if (value > max) this.value = max;
-        });
-    });
-    document.querySelectorAll('.quantity-input').forEach(input => {
-        const row = input.closest('tr');
-        const inventoryText = row.querySelector('small.text-muted');
-
-        // Thêm nút tăng/giảm số lượng
-        const createButton = (text, className, clickHandler) => {
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = `btn btn-sm ${className}`;
-            button.textContent = text;
-            button.onclick = clickHandler;
-            return button;
-        };
-
-        // Tạo div container cho input và buttons
-        const container = document.createElement('div');
-        container.className = 'd-flex align-items-center';
-
-        // Nút giảm
-        const decreaseBtn = createButton('-', 'btn-outline-secondary', () => {
-            const currentValue = parseInt(input.value);
-            if (currentValue > 1) {
-                input.value = currentValue - 1;
-                updateQuantity(row.dataset.id, input.value, parseFloat(row.dataset.price));
-            }
-        });
-
-        // Nút tăng
-        const increaseBtn = createButton('+', 'btn-outline-secondary', () => {
-            const currentValue = parseInt(input.value);
-            const maxValue = parseInt(input.max);
-            if (currentValue < maxValue) {
-                input.value = currentValue + 1;
-                updateQuantity(row.dataset.id, input.value, parseFloat(row.dataset.price));
-            }
-        });
-
-        // Thay thế input bằng container mới
-        input.parentNode.replaceChild(container, input);
-        container.appendChild(decreaseBtn);
-        container.appendChild(input);
-        container.appendChild(increaseBtn);
-
-        // Xử lý khi nhập trực tiếp vào input
-        input.addEventListener('input', function () {
-            let value = parseInt(this.value);
-            const min = parseInt(this.min);
-            const max = parseInt(this.max);
-
-            // Kiểm tra giá trị hợp lệ
-            if (isNaN(value) || value < min) {
-                value = min;
-            } else if (value > max) {
-                value = max;
-            }
-
-            // Cập nhật giá trị và gọi API
-            this.value = value;
-            updateQuantity(row.dataset.id, value, parseFloat(row.dataset.price));
-        });
-
-        // Chặn việc nhập chữ vào input số lượng
-        input.addEventListener('keypress', function (e) {
-            if (!/[0-9]/.test(e.key)) {
-                e.preventDefault();
-            }
-        });
-    });
-</script>
+<script src="{{ url_for('static', filename='js/cart.js') }}" defer></script>
 {% endblock %}

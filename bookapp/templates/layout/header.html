@@ -1,7 +1,7 @@
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-    <div class="container">
+    <div class="container-fluid">
         <a class="navbar-brand" href="/">
-            <i class="bi bi-book-fill"></i> Book Store
+            <i class="fa-solid fa-book-open"></i> Book Store
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
             <span class="navbar-toggler-icon"></span>
@@ -10,15 +10,15 @@
         <div class="collapse navbar-collapse" id="navbarContent">
             <ul class="navbar-nav me-auto">
                 <li class="nav-item">
-                    <a class="nav-link active" href="/">
-                        <i class="bi bi-house-fill"></i> Trang chủ
+                    <a class="nav-link" href="/">
+                        <i class="fa-solid fa-house"></i> Trang chủ
                     </a>
                 </li>
 
                 <!-- Menu Tác giả -->
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                        <i class="bi bi-person-badge-fill"></i> Tác giả
+                        <i class="fa-solid fa-user-group"></i> Tác giả
                     </a>
                     <ul class="dropdown-menu">
                         {% for author in authors %}
@@ -52,19 +52,19 @@
                 {% if current_user.user_role == UserRoleEnum.MANAGER %}
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('import_page') }}">
-                        <i class="bi bi-box-arrow-in-down"></i> Nhập sách
+                        <i class="fa-solid fa-file-import"></i> Nhập sách
                     </a>
                 </li>
                 {% endif %}
                 {% if current_user.user_role == UserRoleEnum.STAFF %}
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('order_page') }}">
-                        <i class="bi bi-cart"></i> Đơn online
+                    <a class="nav-link" href="{{ url_for('online_order_page') }}">
+                        <i class="bi bi-list-task"></i></i> Đơn online
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('sale_page') }}">
-                        <i class="bi bi-cart"></i> Bán sách
+                        <i class="fa-solid fa-basket-shopping"></i> Bán sách
                     </a>
                 </li>
                 {% endif %}
@@ -87,11 +87,8 @@
                 {% if current_user.is_authenticated %}
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
-                        <img src="{{ current_user.avatar }}"
-                             class="rounded-circle me-1"
-                             width="28" height="28"
-                             alt="avatar">
-                        {{ current_user.name }}
+                        <img src="{{ current_user.avatar }}" class="rounded-circle me-1" width="28" height="28"
+                             alt="avatar">{{ current_user.name }}
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
@@ -119,7 +116,7 @@
                 </li>
                 {% endif %}
                 <li class="nav-item">
-                    <a class="nav-link" href="/cart"><i class="bi bi-basket3-fill text-danger"></i>
+                    <a class="nav-link" href="/cart"><i class="bi bi-cart-fill text-danger"></i>
                         <span class="badge bg-danger class-counter">{{stats_cart.total_quantity}}</span></a>
                 </li>
             </ul>

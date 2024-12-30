@@ -3,6 +3,7 @@ from flask import redirect, url_for
 from flask_login import current_user
 import models
 
+
 def roles_required(roles):
     def decorator(func):
         @wraps(func)
