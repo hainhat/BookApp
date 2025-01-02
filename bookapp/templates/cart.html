@@ -6,36 +6,39 @@
     <h1 class="text-danger mb-4 text-center">Giỏ hàng</h1>
     {% if 'cart' in session and session['cart']|length > 0 %}
     <div class="table-container">
-        <table class="table table-bordered table-hover align-middle">
-            <thead class="table-light">
+        <table class="table align-middle table-light">
+            <thead>
             <tr>
-                <th style="width: 40%">Tên sách</th>
-                <th style="width: 35%" class="text-end">Đơn giá</th>
+                <th style="width: 50%">Tên sách</th>
+                <th style="width: 25%" class="text-end">Đơn giá</th>
                 <th style="width: 15%" class="text-center">Số lượng</th>
                 <th style="width: 10%" class="text-center">Xoá</th>
             </tr>
             </thead>
-            <tbody class="table-light">
+            <tbody>
             {% for c in session['cart'].values() %}
             <tr id="product{{ c.id }}">
                 <td>{{ c.name }}</td>
                 <td class="text-end">{{ "{:,.0f}".format(c.price) }} VND</td>
                 <td class="text-center">
-                    <input type="number" min="1" value="{{ c.quantity }}"
-                           class="form-control text-center w-50 mx-auto"
+                    <input type="number" min="1" step="1" value="{{ c.quantity }}"
+                           class="form-control text-center w-75 mx-auto"
                            onchange="updateCart('{{ c.id }}', this.value)">
                     {% set inventory = get_book_inventory(c.id) %}
-                    <small class="text-muted d-block mt-1">Còn lại: <span class="inventory-quantity">{{ inventory.quantity if inventory else 0 }}</span></small>
+                    <small class="text-muted d-block mt-1">
+                        Còn lại: <span class="inventory-quantity">{{ inventory.quantity if inventory else 0 }}</span>
+                    </small>
                 </td>
                 <td class="text-center">
-                    <button class="btn btn-danger btn-sm" onclick="deleteCart('{{ c.id }}')">
-                        <i class="bi bi-x"></i>
+                    <button class="btn btn-outline-danger btn-sm" onclick="deleteCart('{{ c.id }}')">
+                        <i class="bi bi-trash"></i>
                     </button>
                 </td>
             </tr>
             {% endfor %}
             </tbody>
         </table>
+
         <h5>Tổng số lượng: <span class="class-counter text-primary">{{ stats_cart.total_quantity }}</span></h5>
         <h5>Tổng tiền: <span id="total-amount"
                              class="text-danger">{{ "{:,.0f}".format(stats_cart.total_amount) }} VND</span></h5>

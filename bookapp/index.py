@@ -10,7 +10,8 @@ import dao, utils
 from bookapp import app, admin, login, db
 from flask_login import login_user, logout_user, current_user, login_required
 import cloudinary.uploader
-from models import UserRoleEnum, Order, PaymentMethodEnum, OrderStatusEnum, OrderDetail, User
+from models import UserRoleEnum, Order, PaymentMethodEnum, OrderStatusEnum, OrderDetail, User, Book, ReceiptDetail, \
+    Receipt
 from utils import roles_required
 from flask_apscheduler import APScheduler
 from vnpay import VNPay
@@ -403,140 +404,6 @@ def payment_return():
             return redirect(url_for('order_details', order_id=order_id))
 
     return redirect(url_for('cart'))
-
-
-@app.route("/sale", methods=['GET'])
-@login_required
-@roles_required([UserRoleEnum.STAFF])
-def sale_page():
-    return render_template('staff/sale.html')
-
-
-@app.route("/api/books/search")
-@login_required
-@roles_required([UserRoleEnum.STAFF])
-def search_books():
-    query = request.args.get('q')
-    print("Search query:", query)  # Thêm log để debug
-
-    if not query:
-        return jsonify([])
-
-    books = dao.search_books(query)
-    result = [{
-        'id': book[0].id,
-        'name': book[0].name,
-        'price': book[0].price,
-        'inventory': book[1].quantity if book[1] else 0
-    } for book in books]
-
-    print("Search results:", result)  # Thêm log để debug
-    return jsonify(result)
-
-
-@app.route("/api/receipt/add_book", methods=['POST'])
-@login_required
-@roles_required([UserRoleEnum.STAFF])
-def add_to_receipt():
-    data = request.json
-    book_id = str(data.get('id'))
-    quantity = data.get('quantity', 1)
-
-    # Kiểm tra tồn kho
-    inventory = dao.get_book_inventory(book_id)
-    if not inventory or inventory.quantity < quantity:
-        return jsonify({"error": "Không đủ số lượng sách trong kho"}), 400
-
-    # Thêm vào receipt_session
-    cart = session.get('cart', {})
-    if book_id in cart:
-        cart[book_id]['quantity'] += quantity
-    else:
-        cart[book_id] = {
-            'id': int(book_id),  # Chuyển sang int vì create_receipt cần id dạng số
-            'name': data.get('name'),
-            'price': float(data.get('price')),
-            'quantity': quantity
-        }
-    session['cart'] = cart
-
-    # Cập nhật số lượng tồn kho tạm thời
-    if dao.update_inventory(book_id, quantity):
-        return jsonify({
-            'cart': cart,
-            'inventory_quantity': inventory.quantity - quantity
-        })
-
-
-@app.route("/api/receipt/update_quantity", methods=['PUT'])
-@login_required
-@roles_required([UserRoleEnum.STAFF])
-def update_receipt_quantity():
-    data = request.json
-    book_id = str(data.get('id'))
-    new_quantity = int(data.get('quantity'))
-
-    cart = session.get('cart', {})
-    if book_id not in cart:
-        return jsonify({"error": "Sách không tồn tại trong hóa đơn"}), 400
-
-    current_quantity = cart[book_id]['quantity']
-    if new_quantity > current_quantity:
-        increase = new_quantity - current_quantity
-        inventory = dao.get_book_inventory(book_id)
-        if not inventory or inventory.quantity < increase:
-            return jsonify({"error": "Không đủ số lượng sách trong kho"}), 400
-        dao.update_inventory(book_id, increase)
-    else:
-        decrease = current_quantity - new_quantity
-        dao.restore_inventory(book_id, decrease)
-
-    cart[book_id]['quantity'] = new_quantity
-    session['cart'] = cart
-
-    inventory = dao.get_book_inventory(book_id)
-    return jsonify({
-        'cart': cart,
-        'inventory_quantity': inventory.quantity if inventory else 0
-    })
-
-
-@app.route("/api/receipt/remove_book", methods=['DELETE'])
-@login_required
-@roles_required([UserRoleEnum.STAFF])
-def remove_from_receipt():
-    book_id = request.args.get('id')
-    cart = session.get('cart', {})
-
-    if book_id in cart:
-        quantity = cart[book_id]['quantity']
-        dao.restore_inventory(book_id, quantity)
-        del cart[book_id]
-        session['cart'] = cart
-
-    return jsonify({'cart': cart})
-
-
-@app.route("/api/receipt/complete", methods=['POST'])
-@login_required
-@roles_required([UserRoleEnum.STAFF])
-def complete_receipt():
-    cart = session.get('cart')
-    if not cart:
-        return jsonify({"error": "Không có sách trong hóa đơn"}), 400
-
-    try:
-        # Sử dụng hàm create_receipt có sẵn
-        receipt = dao.create_receipt(current_user.id, cart)
-        session.pop('cart', None)  # Xóa cart sau khi tạo receipt thành công
-
-        return jsonify({
-            'success': True,
-            'receipt_id': receipt.id,
-            'total_amount': receipt.total_amount
-        })
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/online_order", methods=['GET', 'POST'])

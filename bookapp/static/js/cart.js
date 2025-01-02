@@ -37,6 +37,11 @@ function addToCart(id, name, price) {
 }
 
 function updateCart(id, quantity) {
+    if (quantity < 1) {
+        alert("Số lượng phải lớn hơn 0.");
+        location.reload();
+        return;
+    }
     fetch(`/api/carts/${id}`, {
         method: 'PUT',
         headers: {

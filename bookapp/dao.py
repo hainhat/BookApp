@@ -109,51 +109,6 @@ def restore_inventory(book_id, quantity):
     return False
 
 
-def search_books(q=None):
-    print("DAO search query:", q)  # Thêm log để debug
-
-    query = db.session.query(Book, BookInventory).outerjoin(BookInventory)
-    if q:
-        query = query.filter(Book.name.ilike(f'%{q}%'))
-
-    result = query.all()
-    print("DAO search results:", result)  # Thêm log để debug
-    return result
-
-
-def create_receipt(staff_id, cart):
-    """Tạo hóa đơn mới"""
-    try:
-        # Tạo receipt
-        receipt = Receipt(
-            staff_id=staff_id,
-            total_amount=0,
-            created_at=datetime.now()
-        )
-        db.session.add(receipt)
-        db.session.flush()
-
-        total_amount = 0
-        # Thêm chi tiết hóa đơn
-        for item in cart.values():
-            detail = ReceiptDetail(
-                receipt_id=receipt.id,
-                book_id=item['id'],
-                quantity=item['quantity'],
-                unit_price=item['price']
-            )
-            total_amount += item['quantity'] * item['price']
-            db.session.add(detail)
-
-        receipt.total_amount = total_amount
-        db.session.commit()
-        return receipt
-
-    except Exception as e:
-        db.session.rollback()
-        raise e
-
-
 def stats_revenue_by_category(month=None, year=None):
     query = (db.session.query(Category.name, func.sum(OrderDetail.quantity * OrderDetail.unit_price).label('revenue'))
              .join(Book, Book.category_id == Category.id)
@@ -192,7 +147,61 @@ def add_comment(content, book_id):
 
 
 def get_comments_by_book(book_id):
-    return Comment.query.filter_by(book_id=book_id).order_by(desc(Comment.created_at)).all()
+    return Comment.query.filter_by(book_id=book_id).all()
+
+
+def search_books(q=None):
+    query = db.session.query(Book, BookInventory) \
+        .outerjoin(BookInventory)
+    if q:
+        query = query.filter(Book.name.ilike(f'%{q}%'))
+    return query.all()
+
+
+def create_receipt(staff_id, cart_data):
+    try:
+        # Tạo hóa đơn mới
+        receipt = Receipt(
+            staff_id=staff_id,
+            payment_method=PaymentMethodEnum.CASH,
+            created_at=datetime.now()
+        )
+        db.session.add(receipt)
+        db.session.flush()
+        total_amount = 0
+        for item in cart_data.values():
+            book_id = int(item['id'])
+            quantity = item['quantity']
+            price = item['price']
+            inventory = get_book_inventory(book_id)
+            if not inventory or inventory.quantity < quantity:
+                raise Exception(f"Sách '{item['name']}' không đủ số lượng trong kho")
+            inventory.quantity -= quantity
+            detail = ReceiptDetail(
+                receipt_id=receipt.id,
+                book_id=book_id,
+                quantity=quantity,
+                unit_price=price
+            )
+            total_amount += quantity * price
+            db.session.add(detail)
+        receipt.total_amount = total_amount
+        db.session.commit()
+        return receipt
+    except Exception as e:
+        db.session.rollback()
+        raise e
+
+
+def get_receipt_details(receipt_id):
+    return db.session.query(ReceiptDetail, Book) \
+        .join(Book) \
+        .filter(ReceiptDetail.receipt_id == receipt_id) \
+        .all()
+
+
+def get_receipt(receipt_id):
+    return Receipt.query.get(receipt_id)
 
 
 if __name__ == "__main__":
