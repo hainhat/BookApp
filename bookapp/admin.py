@@ -42,15 +42,10 @@ class StatsView(MyBaseView):
     def index(self):
         month = request.args.get('month', datetime.now().month, type=int)
         year = request.args.get('year', datetime.now().year, type=int)
-
         revenue_stats = dao.stats_revenue_by_category(month=month, year=year)
         frequency_stats = dao.stats_book_frequency(month=month, year=year)
-
-        return self.render('admin/stats.html',
-                           revenue_stats=revenue_stats,
-                           frequency_stats=frequency_stats,
-                           current_month=month,
-                           current_year=year)
+        return self.render('admin/stats.html', revenue_stats=revenue_stats, frequency_stats=frequency_stats,
+                           current_month=month, current_year=year)
 
 
 class LogoutView(MyBaseView):

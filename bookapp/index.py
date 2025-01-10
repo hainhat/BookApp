@@ -6,6 +6,9 @@ import pandas as pd
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from flask import render_template, request, redirect, url_for, flash, jsonify, session, abort, send_file
+from google.auth.transport import requests
+from google.oauth2 import id_token
+
 import dao, utils
 from bookapp import app, admin, login, db
 from flask_login import login_user, logout_user, current_user, login_required
@@ -56,9 +59,11 @@ def load_user(user_id):
 
 @app.route("/login", methods=['get', 'post'])
 def login_my_user():
-    # Nếu đã đăng nhập thì chuyển về trang chủ
     if current_user.is_authenticated:
         return redirect(url_for('index'))
+    next_url = request.args.get('next')
+    if next_url:
+        session['next'] = next_url
 
     err_msg = ""
     if request.method == 'POST':
@@ -68,8 +73,9 @@ def login_my_user():
         user = dao.auth_user(username=username, password=password)
         if user:
             login_user(user=user)
-            next = request.args.get("next")
-            return redirect(next if next else "/")
+            next = session.get('next', '/')
+            session.pop('next', None)
+            return redirect(next)
         else:
             err_msg = "Tài khoản hoặc mật khẩu không đúng!"
 
@@ -78,6 +84,7 @@ def login_my_user():
 
 @app.route("/logout")
 def logout_my_user():
+    session.pop('state', None)
     logout_user()
     return redirect(url_for('login_my_user'))
 
@@ -254,9 +261,6 @@ def update_cart(product_id):
 def order():
     rules = dao.get_store_rules()
     hours = rules.order_cancel_hours
-    # if 'cart' not in session or not session['cart']:
-    #     flash("Giỏ hàng trống!", "warning")
-    #     return redirect(url_for('cart'))
 
     if request.method == 'POST':
         payment_method = request.form.get('payment_method')
@@ -463,6 +467,54 @@ def export_excel():
     output.seek(0)
     return send_file(output, as_attachment=True, download_name=f"thong_ke_{month}_{year}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@app.route("/login/google/callback", methods=['POST'])
+def google_callback():
+    try:
+        next_url = session.get('next', '/')
+        credential = request.json.get('credential')
+        if not credential:
+            return jsonify({"success": False, "error": "No credential received"})
+
+        idinfo = id_token.verify_oauth2_token(
+            credential,
+            requests.Request(),
+            app.config['GOOGLE_CLIENT_ID']
+        )
+
+        google_id = idinfo['sub']
+        email = idinfo['email']
+        name = idinfo.get('name', '')
+        picture = idinfo.get('picture')
+
+        user = User.query.filter_by(google_id=google_id).first()
+        if not user:
+            base_username = email.split('@')[0]
+            username = base_username
+            counter = 1
+            while User.query.filter_by(username=username).first():
+                username = f"{base_username}{counter}"
+                counter += 1
+            user = User(
+                name=name,
+                email=email,
+                username=username,
+                google_id=google_id,
+                avatar=picture,
+                active=True
+            )
+            db.session.add(user)
+            db.session.commit()
+        login_user(user)
+        return jsonify({
+            "success": True,
+            "redirect_url": next_url
+        })
+
+    except Exception as e:
+        print(f"Login error: {str(e)}")
+        return jsonify({"success": False, "error": str(e)})
 
 
 if __name__ == '__main__':

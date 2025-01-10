@@ -5,7 +5,6 @@ from sqlalchemy import Column, String, Integer, Float, ForeignKey, Boolean, Enum
 from bookapp import db, app
 from sqlalchemy.orm import relationship
 from flask_login import UserMixin
-from sqlalchemy_schemadisplay import create_schema_graph
 from datetime import datetime
 
 
@@ -70,6 +69,9 @@ class User(db.Model, UserMixin):
                     default='https://res.cloudinary.com/dcncfkvwv/image/upload/v1733225278/default-avatar-icon-of-social-media-user-vector_ootybr.jpg')
     user_role = Column(Enum(UserRoleEnum), default=UserRoleEnum.USER)
     comments = relationship('Comment', backref='user', lazy=True)
+    google_id = Column(String(100), unique=True, nullable=True)
+    email = Column(String(100), unique=True, nullable=True)
+    refresh_token = Column(String(255), nullable=True)
 
     def __str__(self):
         return self.name
@@ -86,7 +88,6 @@ class OrderStatusEnum(enum.Enum):
     PENDING = 1
     PAID = 2
     CANCELLED = 3
-    COMPLETED = 4
 
 
 # Nhà kho
@@ -99,25 +100,6 @@ class BookInventory(db.Model):
 
     def __str__(self):
         return f"Inventory for {self.book.name}: {self.quantity}"
-
-
-# Lịch sử nhập sách
-# class ImportHistory(db.Model):
-#     id = Column(Integer, primary_key=True, autoincrement=True)
-#     book_id = Column(Integer, ForeignKey(Book.id), nullable=False)
-#     quantity = Column(Integer, nullable=False)
-#     imported_at = Column(DateTime, default=datetime.now())
-#     import_price = Column(Float, nullable=False)
-#     manager_id = Column(Integer, ForeignKey(User.id), nullable=False)
-#     book = relationship('Book', back_populates='import_history', lazy=True)
-#     manager = relationship('User', lazy=True)
-#
-#     __table_args__ = (
-#         Index('idx_book_import', 'book_id', 'imported_at'),
-#     )
-#
-#     def __str__(self):
-#         return f"Import {self.book.name} - Quantity: {self.quantity}"
 
 
 # Đặt hàng (trực tuyến)
@@ -220,8 +202,6 @@ class Comment(db.Model):
     content = Column(String(255), nullable=False)
     user_id = Column(Integer, ForeignKey(User.id), nullable=False)
     book_id = Column(Integer, ForeignKey(Book.id), nullable=False)
-
-
 
 
 if __name__ == "__main__":

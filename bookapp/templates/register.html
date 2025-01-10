@@ -52,8 +52,48 @@
                         </button>
                     </div>
                 </form>
+                <div class="d-flex flex-column align-items-center gap-3 mt-4">
+                    <div class="text-muted">- hoặc -</div>
+                    <div id="g_id_onload"
+                         data-client_id="{{ config['GOOGLE_CLIENT_ID'] }}"
+                         data-context="signin"
+                         data-ux_mode="popup"
+                         data-callback="handleCredentialResponse"
+                         data-auto_select="false">
+                    </div>
+                    <div class="g_id_signin"
+                         data-type="standard"
+                         data-shape="pill"
+                         data-theme="filled_blue"
+                         data-text="signin_with"
+                         data-size="large"
+                         data-logo_alignment="center">
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+<script>
+    function handleCredentialResponse(response) {
+        // Gửi JWT token đến server với endpoint mới
+        fetch('/login/google/callback', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                credential: response.credential
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    window.location.href = data.redirect_url || '/';
+                } else {
+                    alert('Đăng nhập thất bại');
+                }
+            });
+    }
+</script>
 {% endblock %}
